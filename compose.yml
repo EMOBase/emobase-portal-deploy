@@ -1,0 +1,292 @@
+name: emobase-portal
+
+# emobase-genomics is built locally from the sibling repository. The same image
+# is used by the API, the workers and the one-shot migration/setup services.
+x-genomics-service: &genomics-service
+  image: ${EMOBASE_GENOMICS_IMAGE:-emobase-genomics:local}
+  build:
+    context: ../emobase-genomics
+  restart: unless-stopped
+
+# Configuration shared by the API, workers and one-shot jobs. Genomics reads
+# these with Viper using EMOBASE_GENOMICS_ as the environment prefix.
+x-genomics-environment: &genomics-environment
+  EMOBASE_GENOMICS_ENV_PREFIX: emobase_genomics
+  # emobase-genomics still requires a main species at startup. Multi-species
+  # data is served per assembly version; this only controls legacy single-species
+  # endpoints (direct gene search and silencing sequences).
+  EMOBASE_GENOMICS_MAIN_SPECIES: ${MAIN_SPECIES:-Tcas}
+  EMOBASE_GENOMICS_HTTP__MODE: ${EMOBASE_GENOMICS_HTTP__MODE:-release}
+  EMOBASE_GENOMICS_MYSQL__HOST: mysql
+  EMOBASE_GENOMICS_MYSQL__PORT: ${EMOBASE_GENOMICS_MYSQL__PORT:-3306}
+  EMOBASE_GENOMICS_MYSQL__USER: ${EMOBASE_GENOMICS_MYSQL__USER:-root}
+  EMOBASE_GENOMICS_MYSQL__PASSWORD: ${MYSQL_ROOT_PASSWORD}
+  EMOBASE_GENOMICS_MYSQL__DATABASE: ${EMOBASE_GENOMICS_MYSQL__DATABASE:-emobase_genomics}
+  EMOBASE_GENOMICS_ELASTICSEARCH__ADDRESSES: http://es:9200
+  EMOBASE_GENOMICS_ELASTICSEARCH__INDEX_PREFIX: ${EMOBASE_GENOMICS_ELASTICSEARCH__INDEX_PREFIX:-genomics}
+  EMOBASE_GENOMICS_BLAST__DISPLAY_NAME: ${EMOBASE_GENOMICS_BLAST__DISPLAY_NAME:-EMOBase}
+  EMOBASE_GENOMICS_BLAST__CONTAINER_NAME: ${BLAST_CONTAINER_NAME:-emobase-portal-blast}
+  EMOBASE_GENOMICS_JBROWSE2__GENE_LINK_BASE: ${EMOBASE_GENOMICS_JBROWSE2__GENE_LINK_BASE:-https://ibeetle-base.uni-goettingen.de/details/}
+
+services:
+  # ── Multi-species portal (Astro SSR) ─────────────────────────────────────
+  portal:
+    image: ${EMOBASE_PORTAL_IMAGE:-emobase-portal:local}
+    build:
+      context: ../emobase-portal
+    container_name: emobase-portal-web
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 8080
+      PUBLIC_SERVER: ${PUBLIC_SERVER}
+      # The browser uses relative /ibb paths (the portal's built-in defaults).
+      # Server-to-server calls to genomicsservice use the internal container
+      # network thanks to INTERNAL_API_NETWORKING.
+      PUBLIC_APIS_BASE_URL: /ibb/api
+      PUBLIC_UI_PAGE_GENOMEBROWSER: ${PUBLIC_SERVER}/ibb/jbrowse2/
+      PUBLIC_UI_PAGE_BLAST: ${PUBLIC_SERVER}/ibb/blast/
+      PUBLIC_UI_PAGE_API_DOC: ${PUBLIC_SERVER}/ibb/api/genomicsservice/v1/docs
+      PUBLIC_DOWNLOAD_URL: ${PUBLIC_SERVER}/download/
+      INTERNAL_API_NETWORKING: "true"
+      AUTH_SECRET: ${AUTH_SECRET}
+      AUTH_TRUST_HOST: "true"
+      KEYCLOAK_ISSUER: ${PUBLIC_SERVER}/ibb/keycloak/realms/ibb
+      KEYCLOAK_CLIENT_ID: ibb-client
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+    depends_on:
+      keycloak:
+        condition: service_healthy
+      genomicsservice:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 10s
+      retries: 18
+      start_period: 20s
+
+  # ── Genomics API ─────────────────────────────────────────────────────────
+  genomicsservice:
+    <<: *genomics-service
+    container_name: emobase-portal-genomicsservice
+    command: ["api", "-c", "/app/config.yaml"]
+    environment:
+      <<: *genomics-environment
+      EMOBASE_GENOMICS_KEYCLOAK__URL: http://keycloak:8080/ibb/keycloak
+      EMOBASE_GENOMICS_KEYCLOAK__REALM: ibb
+      EMOBASE_GENOMICS_KEYCLOAK__ISSUER: ${PUBLIC_SERVER}/ibb/keycloak/realms/ibb
+      EMOBASE_GENOMICS_KEYCLOAK__REQUIRED_ROLE: default-roles-ibb
+      # Must match the public path proxied by nginx; tus uses it to build the
+      # Location header returned to the browser.
+      EMOBASE_GENOMICS_UPLOADS__TUS_BASE_PATH: /ibb/api/genomicsservice/v1/uploads
+    volumes:
+      - ${PUBLIC_DATA_DIR}/emobase-genomics:/app/public/uploads
+      - jbrowse2-data:/web/
+      - blast-data:/db/
+    depends_on:
+      mysql:
+        condition: service_healthy
+      es:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 18
+      start_period: 20s
+
+  # ── Genomics job workers ─────────────────────────────────────────────────
+  # Workers run JBrowse2/BLAST setup scripts and restart the blast container
+  # after rebuilding databases, hence the Docker socket mount.
+  genomicsworker-1:
+    <<: *genomics-service
+    container_name: emobase-portal-genomicsworker-1
+    command: ["worker", "-c", "/app/config.yaml"]
+    environment: *genomics-environment
+    volumes:
+      - ${PUBLIC_DATA_DIR}/emobase-genomics:/app/public/uploads
+      - jbrowse2-data:/web/
+      - blast-data:/db/
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      mysql:
+        condition: service_healthy
+      es:
+        condition: service_healthy
+
+  genomicsworker-2:
+    <<: *genomics-service
+    container_name: emobase-portal-genomicsworker-2
+    command: ["worker", "-c", "/app/config.yaml"]
+    environment: *genomics-environment
+    volumes:
+      - ${PUBLIC_DATA_DIR}/emobase-genomics:/app/public/uploads
+      - jbrowse2-data:/web/
+      - blast-data:/db/
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      mysql:
+        condition: service_healthy
+      es:
+        condition: service_healthy
+
+  # ── Reverse proxy / public entrypoint ────────────────────────────────────
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: emobase-portal-nginx
+    restart: unless-stopped
+    ports:
+      - ${HTTP_PORT:-9091}:80
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ${PUBLIC_DATA_DIR}:/download/:ro
+      - jbrowse2-data:/ibb/jbrowse2/:ro
+    depends_on:
+      portal:
+        condition: service_healthy
+      genomicsservice:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      blast:
+        condition: service_started
+
+  # ── BLAST (SequenceServer) ───────────────────────────────────────────────
+  blast:
+    image: wurmlab/sequenceserver:latest
+    container_name: ${BLAST_CONTAINER_NAME:-emobase-portal-blast}
+    restart: unless-stopped
+    tty: true
+    mem_limit: 1g
+    # Fix the redirect URL produced after a job is submitted on the BLAST page.
+    command:
+      - sh
+      - -c
+      - |
+        sed -i 's|redirect to("/#{job.id}")|redirect to("'$${PUBLIC_SERVER}'/ibb/blast/#{job.id}")|g' \
+          /sequenceserver/lib/sequenceserver/routes.rb
+        sequenceserver
+    environment:
+      PUBLIC_SERVER: ${PUBLIC_SERVER}
+    volumes:
+      - blast-data:/db/
+
+  # ── Infrastructure ───────────────────────────────────────────────────────
+  mysql:
+    image: mysql:8.0
+    container_name: emobase-portal-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${EMOBASE_GENOMICS_MYSQL__DATABASE:-emobase_genomics}
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 10s
+      retries: 18
+
+  es:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.17.4
+    container_name: emobase-portal-es
+    restart: unless-stopped
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+    mem_limit: 1g
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s localhost:9200 | grep -q 'You Know, for Search'"]
+      interval: 10s
+      timeout: 10s
+      retries: 18
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.3
+    container_name: emobase-portal-keycloak
+    restart: unless-stopped
+    command: ["start", "--import-realm", "--health-enabled=true"]
+    volumes:
+      - ./keycloak/ibb-realm.json:/opt/keycloak/data/import/ibb-realm.json:ro
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_HOSTNAME_URL: ${PUBLIC_SERVER}/ibb/keycloak/
+      KC_HOSTNAME_ADMIN_URL: ${PUBLIC_SERVER}/ibb/keycloak/
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_STRICT_HTTPS: "false"
+      KC_HTTP_RELATIVE_PATH: /ibb/keycloak/
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY_HEADERS: xforwarded
+      KC_DB: mysql
+      KC_DB_URL_HOST: mysql
+      KC_DB_USERNAME: root
+      KC_DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      KC_DB_SCHEMA: keycloak
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+      PUBLIC_SERVER: ${PUBLIC_SERVER}
+      COCO_USERNAME: ${COCO_USERNAME:-coco}
+      COCO_PASSWORD: ${COCO_PASSWORD}
+      JAVA_OPTS: -Xms256m -Xmx768m
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "{ printf 'HEAD /ibb/keycloak/health/ready HTTP/1.0\r\n\r\n' >&0; grep -q 'HTTP/1.0 200'; } 0<>/dev/tcp/localhost/8080"]
+      interval: 10s
+      timeout: 10s
+      retries: 18
+
+  # ── One-shot setup / migration services ──────────────────────────────────
+  setup-jbrowse2-web:
+    <<: *genomics-service
+    container_name: emobase-portal-setup-jbrowse2-web
+    restart: "no"
+    entrypoint: []
+    command: ["jbrowse", "create", "/web"]
+    volumes:
+      - jbrowse2-data:/web/
+    profiles:
+      - setup
+
+  migrate-genomics-db:
+    <<: *genomics-service
+    container_name: emobase-portal-migrate-genomics-db
+    restart: "no"
+    command: ["db:migrate", "-c", "/app/config.yaml"]
+    environment: *genomics-environment
+    depends_on:
+      mysql:
+        condition: service_healthy
+    profiles:
+      - update
+
+  migrate-genomics-es:
+    <<: *genomics-service
+    container_name: emobase-portal-migrate-genomics-es
+    restart: "no"
+    command: ["es:migrate", "-c", "/app/config.yaml"]
+    environment: *genomics-environment
+    depends_on:
+      es:
+        condition: service_healthy
+    profiles:
+      - update
+
+volumes:
+  mysql-data:
+  es-data:
+  blast-data:
+  jbrowse2-data:

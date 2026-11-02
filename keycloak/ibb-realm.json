@@ -1,0 +1,43 @@
+{
+  "realm": "ibb",
+  "enabled": true,
+  "clients": [
+    {
+      "clientId": "ibb-client",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "${KEYCLOAK_CLIENT_SECRET}",
+      "redirectUris": ["${PUBLIC_SERVER}/*"],
+      "webOrigins": ["${PUBLIC_SERVER}"],
+      "standardFlowEnabled": true
+    }
+  ],
+  "groups": [
+    {
+      "name": "coco",
+      "clientRoles": {
+        "realm-management": [
+          "manage-users",
+          "view-users",
+          "query-users"
+        ]
+      }
+    }
+  ],
+  "users": [
+    {
+      "username": "${COCO_USERNAME}",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${COCO_PASSWORD}",
+          "temporary": true
+        }
+      ],
+      "realmRoles": ["default-roles-ibb"],
+      "groups": ["coco"]
+    }
+  ]
+}

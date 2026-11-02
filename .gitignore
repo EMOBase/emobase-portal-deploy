@@ -1,0 +1,6 @@
+# Local secrets
+.env
+
+# Runtime data (uploads, version files, assembly images)
+data/public/*
+!data/public/.gitignore
