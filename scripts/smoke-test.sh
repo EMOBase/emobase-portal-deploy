@@ -75,7 +75,7 @@ soft_check /ibb/blast/
 if [[ "$fail" -ne 0 ]]; then
   echo
   echo "One or more checks failed. Inspect logs with:"
-  echo "  docker compose logs --tail=200 portal genomicsservice nginx keycloak"
+  echo "  docker compose logs --tail=200 fe genomicsservice nginx keycloak"
   exit 1
 fi
 

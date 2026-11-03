@@ -1,6 +1,6 @@
 # Local development only.
 #
-# Build the portal and genomics images from the sibling source repositories
+# Build the web UI and genomics images from the sibling source repositories
 # instead of pulling them from GHCR:
 #
 #   docker compose -f compose.yml -f compose.local.yml up -d --build
@@ -9,8 +9,8 @@
 # compose.override.yml), so a normal `docker compose up -d` always uses the
 # published images.
 services:
-  portal:
-    image: emobase-portal:local
+  fe:
+    image: emobase-portal-web:local
     build:
       context: ../emobase-portal-web
 

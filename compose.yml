@@ -31,9 +31,9 @@ x-genomics-environment: &genomics-environment
   EMOBASE_GENOMICS_JBROWSE2__GENE_LINK_BASE: ${EMOBASE_GENOMICS_JBROWSE2__GENE_LINK_BASE:-https://ibeetle-base.uni-goettingen.de/details/}
 
 services:
-  # ── Multi-species portal (Astro SSR) ─────────────────────────────────────
-  portal:
-    image: ${EMOBASE_PORTAL_IMAGE:-ghcr.io/emobase/emobase-portal-web:main}
+  # ── Frontend web UI (Astro SSR) ──────────────────────────────────────────
+  fe:
+    image: ${EMOBASE_PORTAL_WEB_IMAGE:-ghcr.io/emobase/emobase-portal-web:main}
     container_name: emobase-portal-web
     restart: unless-stopped
     environment:
@@ -146,7 +146,7 @@ services:
       - ${PUBLIC_DATA_DIR}:/download/:ro
       - jbrowse2-data:/ibb/jbrowse2/:ro
     depends_on:
-      portal:
+      fe:
         condition: service_healthy
       genomicsservice:
         condition: service_healthy

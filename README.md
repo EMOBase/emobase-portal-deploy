@@ -12,7 +12,7 @@ no local builds.
 
 | Service | Purpose |
 | --- | --- |
-| `portal` | Portal web UI (`ghcr.io/emobase/emobase-portal-web`) |
+| `fe` | Portal web UI (`ghcr.io/emobase/emobase-portal-web`) |
 | `genomicsservice` | Genomics API (`ghcr.io/emobase/emobase-genomics`) |
 | `genomicsworker-1/2` | Async upload/JBrowse2/BLAST jobs |
 | `nginx` | Public entrypoint and reverse proxy |
@@ -28,7 +28,7 @@ the `/ibb/...` paths that the web UI uses by default:
 
 | Path | Backend |
 | --- | --- |
-| `/` | `portal:8080` |
+| `/` | `fe:8080` |
 | `/download/` | `${PUBLIC_DATA_DIR}` on the host |
 | `/ibb/api/genomicsservice/v1/` | `genomicsservice:8080` |
 | `/ibb/keycloak/` | `keycloak:8080` |
@@ -146,7 +146,7 @@ to `dev` publishes `:dev` automatically. `.env.example` pins:
 
 ```dotenv
 EMOBASE_GENOMICS_IMAGE=ghcr.io/emobase/emobase-genomics:dev
-EMOBASE_PORTAL_IMAGE=ghcr.io/emobase/emobase-portal-web:main
+EMOBASE_PORTAL_WEB_IMAGE=ghcr.io/emobase/emobase-portal-web:main
 ```
 
 An unmerged feature branch can still be published on demand (see above) and
@@ -155,7 +155,7 @@ immutable SHA:
 
 ```dotenv
 EMOBASE_GENOMICS_IMAGE=ghcr.io/emobase/emobase-genomics:sha-abc1234
-EMOBASE_PORTAL_IMAGE=ghcr.io/emobase/emobase-portal-web:v1.0.0
+EMOBASE_PORTAL_WEB_IMAGE=ghcr.io/emobase/emobase-portal-web:v1.0.0
 ```
 
 ### One-time package visibility
