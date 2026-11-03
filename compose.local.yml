@@ -12,7 +12,7 @@ services:
   portal:
     image: emobase-portal:local
     build:
-      context: ../emobase-portal
+      context: ../emobase-portal-web
 
   genomicsservice:
     image: emobase-genomics:local
