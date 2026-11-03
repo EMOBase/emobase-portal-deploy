@@ -1,8 +1,8 @@
 # EMOBase Portal deployment
 
-Multi-species deployment stack: **emobase-portal** (Astro SSR UI) in front of
-**emobase-genomics** (API, workers, MySQL, Elasticsearch, JBrowse2, BLAST) and
-Keycloak for authentication.
+Multi-species deployment stack: **emobase-portal-web** (Astro SSR UI) in front
+of **emobase-genomics** (API, workers, MySQL, Elasticsearch, JBrowse2, BLAST)
+and Keycloak for authentication.
 
 Application images are built and published by GitHub Actions, so a deployment
 server only needs **this repository plus Docker** — no sibling source trees and
@@ -12,7 +12,7 @@ no local builds.
 
 | Service | Purpose |
 | --- | --- |
-| `portal` | Multi-species UI (`ghcr.io/emobase/emobase-portal-web`) |
+| `portal` | Portal web UI (`ghcr.io/emobase/emobase-portal-web`) |
 | `genomicsservice` | Genomics API (`ghcr.io/emobase/emobase-genomics`) |
 | `genomicsworker-1/2` | Async upload/JBrowse2/BLAST jobs |
 | `nginx` | Public entrypoint and reverse proxy |
@@ -23,8 +23,8 @@ no local builds.
 | `setup-jbrowse2-web` | One-shot JBrowse2 web-root initialisation |
 | `migrate-genomics-db` / `migrate-genomics-es` | One-shot genomics migrations |
 
-The portal is served at `/`. Genomics, Keycloak, BLAST and JBrowse2 keep the
-`/ibb/...` paths that the portal uses by default:
+The portal web UI is served at `/`. Genomics, Keycloak, BLAST and JBrowse2 keep
+the `/ibb/...` paths that the web UI uses by default:
 
 | Path | Backend |
 | --- | --- |
@@ -95,11 +95,13 @@ Only this repository is needed. `compose.yml` contains no `build:` sections.
    `KEYCLOAK_ADMIN_PASSWORD`.
 
 The imported realm user (`COCO_USERNAME`) has the `default-roles-ibb` role and
-can sign in to the portal. Its password is temporary; Keycloak asks for a new
-password on first login. Create more users from the Keycloak admin console.
+can sign in to the portal web UI. Its password is temporary; Keycloak asks for
+a new password on first login. Create more users from the Keycloak admin
+console.
 
-The migrations must run **before the portal is used**. If they are skipped the
-API returns `500` because tables such as `versions` do not exist yet.
+The migrations must run **before the portal web UI is used**. If they are
+skipped the API returns `500` because tables such as `versions` do not exist
+yet.
 
 ## Image pipeline
 
@@ -218,8 +220,8 @@ tag in `.env` and run the same commands.
 3. Simulate a fresh deployment server: clone **only** this repository into a
    temporary directory (no `../emobase-*` source directories), create `.env`,
    then follow “First start”. This proves the stack is self-contained.
-4. Run `./scripts/smoke-test.sh` and open the portal in a browser. Sign in,
-   then check that `/admin/versions` loads without the `versions` 500.
+4. Run `./scripts/smoke-test.sh` and open the portal web UI in a browser. Sign
+   in, then check that `/admin/versions` loads without the `versions` 500.
 
 `/ibb/blast/` returns `502` until the first release has built BLAST databases
 (SequenceServer does not serve the UI with an empty database directory). The
