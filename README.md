@@ -157,30 +157,17 @@ Tags for a Git tag `v1.2.3`: `v1.2.3`, `1.2.3`, `1.2`, plus `sha-<short>`.
 into `dev` first, and every push to `dev` publishes `:dev` automatically.
 `main` stays the release branch.
 
-The multi-species work is currently still on
-`feat/multi-species-assembly-versions`. That branch is not built automatically;
-publish it once with:
-
-```bash
-gh workflow run build.yml --ref feat/multi-species-assembly-versions
-```
-
-`.env.example` pins the resulting tag:
-
-```dotenv
-EMOBASE_GENOMICS_IMAGE=ghcr.io/emobase/emobase-genomics:feat-multi-species-assembly-versions
-EMOBASE_PORTAL_IMAGE=ghcr.io/emobase/emobase-portal:main
-```
-
-After merging it into the genomics `dev` branch, switch to `:dev` (no manual
-workflow run needed):
+The multi-species work is merged into the genomics `dev` branch, and every
+push to `dev` publishes `:dev` automatically. `.env.example` pins:
 
 ```dotenv
 EMOBASE_GENOMICS_IMAGE=ghcr.io/emobase/emobase-genomics:dev
 EMOBASE_PORTAL_IMAGE=ghcr.io/emobase/emobase-portal:main
 ```
 
-For production, prefer a release tag or immutable SHA:
+An unmerged feature branch can still be published on demand (see above) and
+used the same way with its branch tag. For production, prefer a release tag or
+immutable SHA:
 
 ```dotenv
 EMOBASE_GENOMICS_IMAGE=ghcr.io/emobase/emobase-genomics:sha-abc1234
@@ -242,7 +229,7 @@ tag in `.env` and run the same commands.
 2. Confirm the image exists for both architectures:
 
    ```bash
-   docker manifest inspect ghcr.io/emobase/emobase-genomics:feat-multi-species-assembly-versions \
+   docker manifest inspect ghcr.io/emobase/emobase-genomics:dev \
      | grep -A2 '"architecture"'
    ```
 
