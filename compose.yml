@@ -1,8 +1,9 @@
 name: emobase-portal
 
 # Images are published to GitHub Container Registry by the workflows in the
-# emobase-genomics and emobase-portal repositories. Pin a specific tag in .env
-# (a release such as v0.6.0, or an immutable sha-<short> build) for production.
+# emobase-genomics and emobase-portal-web repositories. Pin a specific tag in
+# .env (a release such as v0.6.0, or an immutable sha-<short> build) for
+# production.
 # The same genomics image is used by the API, workers and one-shot jobs.
 # For local development against the sibling source trees see compose.local.yml.
 x-genomics-service: &genomics-service
@@ -32,7 +33,7 @@ x-genomics-environment: &genomics-environment
 services:
   # ── Multi-species portal (Astro SSR) ─────────────────────────────────────
   portal:
-    image: ${EMOBASE_PORTAL_IMAGE:-ghcr.io/emobase/emobase-portal:main}
+    image: ${EMOBASE_PORTAL_IMAGE:-ghcr.io/emobase/emobase-portal-web:main}
     container_name: emobase-portal-web
     restart: unless-stopped
     environment:

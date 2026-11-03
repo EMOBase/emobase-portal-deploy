@@ -16,7 +16,7 @@ no local builds.
 
 | Service | Purpose |
 | --- | --- |
-| `portal` | Multi-species UI (`ghcr.io/emobase/emobase-portal`) |
+| `portal` | Multi-species UI (`ghcr.io/emobase/emobase-portal-web`) |
 | `genomicsservice` | Genomics API (`ghcr.io/emobase/emobase-genomics`) |
 | `genomicsworker-1/2` | Async upload/JBrowse2/BLAST jobs |
 | `nginx` | Public entrypoint and reverse proxy |
@@ -111,13 +111,13 @@ API returns `500` because tables such as `versions` do not exist yet.
 
 ## Image pipeline
 
-`emobase-portal` and `emobase-genomics` publish multi-architecture images
+`emobase-portal-web` and `emobase-genomics` publish multi-architecture images
 (`linux/amd64` + `linux/arm64`) to GitHub Container Registry. `emobase-web`
 keeps its existing single-architecture (`linux/amd64`) workflow:
 
 | Repository | Image |
 | --- | --- |
-| `EMOBase/emobase-portal` | `ghcr.io/emobase/emobase-portal` |
+| `EMOBase/emobase-portal-web` | `ghcr.io/emobase/emobase-portal-web` |
 | `EMOBase/emobase-genomics` | `ghcr.io/emobase/emobase-genomics` |
 | `EMOBase/emobase-web` | `ghcr.io/emobase/emobase-web` (used by `emobase-deploy`) |
 
@@ -125,7 +125,7 @@ Workflow files:
 
 | Repository | Workflow | Automatic triggers |
 | --- | --- | --- |
-| `emobase-portal` | `.github/workflows/docker-publish.yml` | pushes to `main`/`dev`, `v*` tags, PRs to `main`/`dev` (amd64 only, no push), manual |
+| `emobase-portal-web` | `.github/workflows/docker-publish.yml` | pushes to `main`/`dev`, `v*` tags, PRs to `main`/`dev` (amd64 only, no push), manual |
 | `emobase-genomics` | `.github/workflows/build.yml` | same |
 | `emobase-web` | `.github/workflows/build.yml` (already existed) | pushes to `main`/`dev`, tags |
 
@@ -136,7 +136,7 @@ Only the deployment branches (`main`, `dev`) build automatically. To publish an
 unmerged feature branch on demand, use **Actions → Run workflow**, or:
 
 ```bash
-gh workflow run docker-publish.yml --ref <branch>   # emobase-portal
+gh workflow run docker-publish.yml --ref <branch>   # emobase-portal-web
 gh workflow run build.yml --ref <branch>            # emobase-genomics
 ```
 
@@ -162,7 +162,7 @@ push to `dev` publishes `:dev` automatically. `.env.example` pins:
 
 ```dotenv
 EMOBASE_GENOMICS_IMAGE=ghcr.io/emobase/emobase-genomics:dev
-EMOBASE_PORTAL_IMAGE=ghcr.io/emobase/emobase-portal:main
+EMOBASE_PORTAL_IMAGE=ghcr.io/emobase/emobase-portal-web:main
 ```
 
 An unmerged feature branch can still be published on demand (see above) and
@@ -171,7 +171,7 @@ immutable SHA:
 
 ```dotenv
 EMOBASE_GENOMICS_IMAGE=ghcr.io/emobase/emobase-genomics:sha-abc1234
-EMOBASE_PORTAL_IMAGE=ghcr.io/emobase/emobase-portal:v1.0.0
+EMOBASE_PORTAL_IMAGE=ghcr.io/emobase/emobase-portal-web:v1.0.0
 ```
 
 ### One-time package visibility
@@ -224,7 +224,7 @@ tag in `.env` and run the same commands.
 
 ## Testing the whole setup
 
-1. Push a branch to `emobase-portal` / `emobase-genomics` / `emobase-web` and
+1. Push a branch to `emobase-portal-web` / `emobase-genomics` / `emobase-web` and
    watch the **Actions** tab. A green run publishes the branch tag.
 2. Confirm the image exists for both architectures:
 
