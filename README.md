@@ -4,10 +4,6 @@ Multi-species deployment stack: **emobase-portal** (Astro SSR UI) in front of
 **emobase-genomics** (API, workers, MySQL, Elasticsearch, JBrowse2, BLAST) and
 Keycloak for authentication.
 
-This is the multi-species successor to `emobase-deploy`. `emobase-deploy` keeps
-the single-species `emobase-web` frontend; its `emobase-genomics` services will
-be removed once this stack is in place.
-
 Application images are built and published by GitHub Actions, so a deployment
 server only needs **this repository plus Docker** — no sibling source trees and
 no local builds.
@@ -51,10 +47,6 @@ The portal is served at `/`. Genomics, Keycloak, BLAST and JBrowse2 keep the
   ```
 
   The token needs the `read:packages` scope.
-
-> This local repository has no GitHub remote yet. Create it once with
-> `gh repo create EMOBase/emobase-portal-deploy --public --source=. --push`
-> (or `--private`) before other machines can clone it.
 
 ## First start (deployment server)
 
@@ -112,14 +104,12 @@ API returns `500` because tables such as `versions` do not exist yet.
 ## Image pipeline
 
 `emobase-portal-web` and `emobase-genomics` publish multi-architecture images
-(`linux/amd64` + `linux/arm64`) to GitHub Container Registry. `emobase-web`
-keeps its existing single-architecture (`linux/amd64`) workflow:
+(`linux/amd64` + `linux/arm64`) to GitHub Container Registry:
 
 | Repository | Image |
 | --- | --- |
 | `EMOBase/emobase-portal-web` | `ghcr.io/emobase/emobase-portal-web` |
 | `EMOBase/emobase-genomics` | `ghcr.io/emobase/emobase-genomics` |
-| `EMOBase/emobase-web` | `ghcr.io/emobase/emobase-web` (used by `emobase-deploy`) |
 
 Workflow files:
 
@@ -127,10 +117,6 @@ Workflow files:
 | --- | --- | --- |
 | `emobase-portal-web` | `.github/workflows/docker-publish.yml` | pushes to `main`/`dev`, `v*` tags, PRs to `main`/`dev` (amd64 only, no push), manual |
 | `emobase-genomics` | `.github/workflows/build.yml` | same |
-| `emobase-web` | `.github/workflows/build.yml` (already existed) | pushes to `main`/`dev`, tags |
-
-`emobase-web` already publishes `ghcr.io/emobase/emobase-web:dev` from its
-existing workflow; it does not need a second workflow file.
 
 Only the deployment branches (`main`, `dev`) build automatically. To publish an
 unmerged feature branch on demand, use **Actions → Run workflow**, or:
@@ -153,12 +139,8 @@ Tags for `main` / `dev` pushes:
 
 Tags for a Git tag `v1.2.3`: `v1.2.3`, `1.2.3`, `1.2`, plus `sha-<short>`.
 
-`emobase-genomics` keeps a `dev` integration branch: feature work is merged
-into `dev` first, and every push to `dev` publishes `:dev` automatically.
-`main` stays the release branch.
-
-The multi-species work is merged into the genomics `dev` branch, and every
-push to `dev` publishes `:dev` automatically. `.env.example` pins:
+The multi-species genomics work lives on `emobase-genomics` `dev`; every push
+to `dev` publishes `:dev` automatically. `.env.example` pins:
 
 ```dotenv
 EMOBASE_GENOMICS_IMAGE=ghcr.io/emobase/emobase-genomics:dev
@@ -224,8 +206,8 @@ tag in `.env` and run the same commands.
 
 ## Testing the whole setup
 
-1. Push a branch to `emobase-portal-web` / `emobase-genomics` / `emobase-web` and
-   watch the **Actions** tab. A green run publishes the branch tag.
+1. Push a branch to `emobase-portal-web` or `emobase-genomics` and watch the
+   **Actions** tab. A green run publishes the branch tag.
 2. Confirm the image exists for both architectures:
 
    ```bash
