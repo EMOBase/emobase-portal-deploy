@@ -1,0 +1,45 @@
+# Local development only.
+#
+# Build the portal and genomics images from the sibling source repositories
+# instead of pulling them from GHCR:
+#
+#   docker compose -f compose.yml -f compose.local.yml up -d --build
+#
+# This file is not loaded automatically (Compose only auto-loads
+# compose.override.yml), so a normal `docker compose up -d` always uses the
+# published images.
+services:
+  portal:
+    image: emobase-portal:local
+    build:
+      context: ../emobase-portal
+
+  genomicsservice:
+    image: emobase-genomics:local
+    build:
+      context: ../emobase-genomics
+
+  genomicsworker-1:
+    image: emobase-genomics:local
+    build:
+      context: ../emobase-genomics
+
+  genomicsworker-2:
+    image: emobase-genomics:local
+    build:
+      context: ../emobase-genomics
+
+  setup-jbrowse2-web:
+    image: emobase-genomics:local
+    build:
+      context: ../emobase-genomics
+
+  migrate-genomics-db:
+    image: emobase-genomics:local
+    build:
+      context: ../emobase-genomics
+
+  migrate-genomics-es:
+    image: emobase-genomics:local
+    build:
+      context: ../emobase-genomics
