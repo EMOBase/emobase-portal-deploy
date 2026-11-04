@@ -41,19 +41,19 @@ services:
       HOST: 0.0.0.0
       PORT: 8080
       PUBLIC_SERVER: ${PUBLIC_SERVER}
-      # The browser uses relative /ibb paths (the portal's built-in defaults).
+      # All public URLs are relative paths by convention; the web UI resolves
+      # them against PUBLIC_SERVER (see getUrlEnv in emobase-portal-web).
       # Server-to-server calls to genomicsservice use the internal container
       # network thanks to INTERNAL_API_NETWORKING.
       PUBLIC_APIS_BASE_URL: /ibb/api
-      PUBLIC_UI_PAGE_GENOMEBROWSER: ${PUBLIC_SERVER}/ibb/jbrowse2/
-      PUBLIC_UI_PAGE_BLAST: ${PUBLIC_SERVER}/ibb/blast/
-      PUBLIC_UI_PAGE_API_DOC: ${PUBLIC_SERVER}/ibb/api/genomicsservice/v1/docs
-      # Relative path: the UI prepends PUBLIC_SERVER itself.
       PUBLIC_DOWNLOAD_URL: /download/
+      PUBLIC_UI_PAGE_GENOMEBROWSER: /ibb/jbrowse2/
+      PUBLIC_UI_PAGE_BLAST: /ibb/blast/
+      PUBLIC_UI_PAGE_API_DOC: /ibb/api/genomicsservice/v1/docs
       INTERNAL_API_NETWORKING: "true"
       AUTH_SECRET: ${AUTH_SECRET}
       AUTH_TRUST_HOST: "true"
-      KEYCLOAK_ISSUER: ${PUBLIC_SERVER}/ibb/keycloak/realms/ibb
+      KEYCLOAK_ISSUER: /ibb/keycloak/realms/ibb
       KEYCLOAK_CLIENT_ID: ibb-client
       KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
     depends_on:
