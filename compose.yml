@@ -158,6 +158,9 @@ services:
   # ── BLAST (SequenceServer) ───────────────────────────────────────────────
   blast:
     image: wurmlab/sequenceserver:latest
+    # The upstream image is published for linux/amd64 only. Pinning the
+    # platform keeps pulls working on arm64 hosts (Docker Desktop / QEMU).
+    platform: linux/amd64
     container_name: ${BLAST_CONTAINER_NAME:-emobase-portal-blast}
     restart: unless-stopped
     tty: true
