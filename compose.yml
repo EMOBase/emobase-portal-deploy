@@ -48,7 +48,8 @@ services:
       PUBLIC_UI_PAGE_GENOMEBROWSER: ${PUBLIC_SERVER}/ibb/jbrowse2/
       PUBLIC_UI_PAGE_BLAST: ${PUBLIC_SERVER}/ibb/blast/
       PUBLIC_UI_PAGE_API_DOC: ${PUBLIC_SERVER}/ibb/api/genomicsservice/v1/docs
-      PUBLIC_DOWNLOAD_URL: ${PUBLIC_SERVER}/download/
+      # Relative path: the UI prepends PUBLIC_SERVER itself.
+      PUBLIC_DOWNLOAD_URL: /download/
       INTERNAL_API_NETWORKING: "true"
       AUTH_SECRET: ${AUTH_SECRET}
       AUTH_TRUST_HOST: "true"
