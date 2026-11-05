@@ -40,6 +40,8 @@ services:
       NODE_ENV: production
       HOST: 0.0.0.0
       PORT: 8080
+      # Match the nginx header buffers; Auth.js session cookies can grow.
+      NODE_OPTIONS: --max-http-header-size=32768
       PUBLIC_SERVER: ${PUBLIC_SERVER}
       # All public URLs are relative paths by convention; the web UI resolves
       # them against PUBLIC_SERVER (see getUrlEnv in emobase-portal-web).
