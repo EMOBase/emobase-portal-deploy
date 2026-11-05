@@ -166,11 +166,13 @@ services:
     tty: true
     mem_limit: 1g
     # Fix the redirect URL produced after a job is submitted on the BLAST page.
+    # Keep it root-relative so it stays on the origin that served the page;
+    # the page is often embedded in an iframe on a different host.
     command:
       - sh
       - -c
       - |
-        sed -i 's|redirect to("/#{job.id}")|redirect to("'$${PUBLIC_SERVER}'/ibb/blast/#{job.id}")|g' \
+        sed -i 's|redirect to("/#{job.id}")|redirect to("/ibb/blast/#{job.id}")|g' \
           /sequenceserver/lib/sequenceserver/routes.rb
         # SequenceServer emits root-absolute asset URLs by default, which 404
         # when it is proxied under /ibb/blast/. Point its asset prefix at the
@@ -179,7 +181,6 @@ services:
           /sequenceserver/lib/sequenceserver/routes.rb
         sequenceserver -r /opt/links_jbrowse2.rb
     environment:
-      PUBLIC_SERVER: ${PUBLIC_SERVER}
       JBROWSE_CONFIG: /jbrowse2/data/config.json
     volumes:
       - blast-data:/db/

@@ -36,18 +36,15 @@ module SequenceServer
     end
 
     def jbrowse2
+      # Only a search against the genome database has coordinates in the
+      # JBrowse2 assembly. Restricting this to a single selected database also
+      # avoids whichdb(), which runs blastdbcmd per hit and would stall the
+      # results page on large result sets.
       databases = report.querydb
-      return nil unless databases.any? { |db| Links.genome_database?(db) }
+      return nil unless databases.length == 1
 
-      # A single-database search is the common case and needs no blastdbcmd
-      # lookup. For mixed searches, whichdb() narrows the hit to the selected
-      # database that actually contains it.
-      database = if databases.length == 1
-                   databases.first
-                 else
-                   whichdb.find { |db| Links.genome_database?(db) }
-                 end
-      return nil unless database
+      database = databases.first
+      return nil unless Links.genome_database?(database)
 
       assembly = File.basename(database.name).sub(/-(?:genome|protein|rna)\z/, '')
       ref_name = id.gsub(/^.*\|(.*)\|.*$/, '\1')
@@ -81,8 +78,9 @@ module SequenceServer
         }]
       }
 
-      base_url = ENV.fetch('PUBLIC_SERVER', '').sub(%r{/+\z}, '')
-      url = "#{base_url}/ibb/jbrowse2/?config=data/config.json"
+      # Root-relative so the link follows whichever origin served the BLAST
+      # page (directly or embedded in an iframe on another host).
+      url = "/ibb/jbrowse2/?config=data/config.json"
       url += "&assembly=#{encode(assembly)}"
       url += "&loc=#{encode(ref_name)}:#{start_pos}..#{end_pos}"
       url += "&tracks=#{encode(Links.jbrowse_track_ids(assembly, track_id).join(','))}"

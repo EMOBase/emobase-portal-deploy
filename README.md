@@ -200,8 +200,9 @@ opens JBrowse2 at the hit coordinates with a temporary BLAST-hit track.
 
 The assembly is derived from the BLAST database name (`v2a4-genome` → `v2a4`),
 which is also the JBrowse2 assembly name. Hits from protein or RNA databases
-get no link, since JBrowse2 uses the genome assembly as the reference. For a
-mixed search, `whichdb` narrows each hit to the database it actually came from.
+get no link, since JBrowse2 uses the genome assembly as the reference. The link
+is only added when a single genome database is selected; mixed searches omit it
+so the results page does not run a `blastdbcmd` lookup per hit.
 
 The extension reads assembly track IDs from the shared JBrowse2 config, so the
 `blast` service mounts `jbrowse2-data` read-only at `/jbrowse2`.
