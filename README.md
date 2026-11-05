@@ -207,6 +207,10 @@ so the results page does not run a `blastdbcmd` lookup per hit.
 The extension reads assembly track IDs from the shared JBrowse2 config, so the
 `blast` service mounts `jbrowse2-data` read-only at `/jbrowse2`.
 
+The link is absolute to `PUBLIC_SERVER`, so it also works when the BLAST page
+is embedded by a species deployment that only proxies `/ibb/blast/` and loads
+JBrowse2 directly from the portal.
+
 For the one-shot services:
 
 ```bash

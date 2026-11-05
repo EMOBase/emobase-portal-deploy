@@ -78,9 +78,11 @@ module SequenceServer
         }]
       }
 
-      # Root-relative so the link follows whichever origin served the BLAST
-      # page (directly or embedded in an iframe on another host).
-      url = "/ibb/jbrowse2/?config=data/config.json"
+      # JBrowse2 is served by the portal itself, not by the species
+      # deployment, so link to the portal's public origin. The species
+      # deployment no longer proxies /ibb/jbrowse2/.
+      base_url = ENV.fetch('PUBLIC_SERVER', '').sub(%r{/+\z}, '')
+      url = "#{base_url}/ibb/jbrowse2/?config=data/config.json"
       url += "&assembly=#{encode(assembly)}"
       url += "&loc=#{encode(ref_name)}:#{start_pos}..#{end_pos}"
       url += "&tracks=#{encode(Links.jbrowse_track_ids(assembly, track_id).join(','))}"

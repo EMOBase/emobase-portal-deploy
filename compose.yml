@@ -181,6 +181,7 @@ services:
           /sequenceserver/lib/sequenceserver/routes.rb
         sequenceserver -r /opt/links_jbrowse2.rb
     environment:
+      PUBLIC_SERVER: ${PUBLIC_SERVER}
       JBROWSE_CONFIG: /jbrowse2/data/config.json
     volumes:
       - blast-data:/db/
