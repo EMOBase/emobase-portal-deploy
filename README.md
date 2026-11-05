@@ -216,9 +216,9 @@ smoke test reports that as a warning; set `STRICT_BLAST=1` to make it fatal.
   `blast` container after rebuilding databases. The container name is controlled
   by `BLAST_CONTAINER_NAME` and must match the `blast` service.
 - BLAST databases are created by the genomics workers (`SETUP_BLAST` jobs) from
-  a release and written to the `blast-data` volume; there is no separate
-  `setup-blast` service. Check `/ibb/blast/searchdata.json` to see what the
-  running SequenceServer has picked up.
+  a release and written to the `blast-data` volume. Check
+  `/ibb/blast/searchdata.json` to see what the running SequenceServer has
+  picked up.
 - `MAIN_SPECIES` is still required by emobase-genomics. It only affects legacy
   single-species endpoints; all assemblies in a release are served in
   multi-species mode.
