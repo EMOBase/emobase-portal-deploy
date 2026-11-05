@@ -192,6 +192,20 @@ docker run --rm --platform linux/amd64 alpine sh -c 'ls -l /proc/1/exe'
 # expect: /proc/1/exe -> /run/rosetta/rosetta
 ```
 
+### BLAST result links
+
+`blast/links_jbrowse2.rb` is loaded as a SequenceServer extension and adds a
+**Genome Browser** link to hits from a `*-genome` nucleotide database. The link
+opens JBrowse2 at the hit coordinates with a temporary BLAST-hit track.
+
+The assembly is derived from the BLAST database name (`v2a4-genome` → `v2a4`),
+which is also the JBrowse2 assembly name. Hits from protein or RNA databases
+get no link, since JBrowse2 uses the genome assembly as the reference. For a
+mixed search, `whichdb` narrows each hit to the database it actually came from.
+
+The extension reads assembly track IDs from the shared JBrowse2 config, so the
+`blast` service mounts `jbrowse2-data` read-only at `/jbrowse2`.
+
 For the one-shot services:
 
 ```bash

@@ -172,11 +172,16 @@ services:
       - |
         sed -i 's|redirect to("/#{job.id}")|redirect to("'$${PUBLIC_SERVER}'/ibb/blast/#{job.id}")|g' \
           /sequenceserver/lib/sequenceserver/routes.rb
-        sequenceserver
+        sequenceserver -r /opt/links_jbrowse2.rb
     environment:
       PUBLIC_SERVER: ${PUBLIC_SERVER}
+      JBROWSE_CONFIG: /jbrowse2/data/config.json
     volumes:
       - blast-data:/db/
+      # Adds the "Genome Browser" link to hits from *-genome databases.
+      - ./blast/links_jbrowse2.rb:/opt/links_jbrowse2.rb:ro
+      # Read-only access to the assembly/track IDs in JBrowse2's config.json.
+      - jbrowse2-data:/jbrowse2:ro
 
   # ── Infrastructure ───────────────────────────────────────────────────────
   mysql:
