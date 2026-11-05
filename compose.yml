@@ -40,7 +40,8 @@ services:
       NODE_ENV: production
       HOST: 0.0.0.0
       PORT: 8080
-      # Match the nginx header buffers; Auth.js session cookies can grow.
+      # nginx allows 16k per header line; Node limits all headers together.
+      # The extra Node headroom covers the request line and the other headers.
       NODE_OPTIONS: --max-http-header-size=32768
       PUBLIC_SERVER: ${PUBLIC_SERVER}
       # All public URLs are relative paths by convention; the web UI resolves
