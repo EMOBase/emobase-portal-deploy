@@ -8,11 +8,6 @@
 # This file is not loaded automatically (Compose only auto-loads
 # compose.override.yml), so a normal `docker compose up -d` always uses the
 # published images.
-#
-# The blast override works around a QEMU deadlock: the amd64 SequenceServer
-# image cannot fork reliably on arm64 hosts (e.g. Docker Desktop on Apple
-# Silicon), so /ibb/blast/ never binds. The extension replaces its fork+exec
-# helper with Open3 (spawn). It is harmless on x86_64 but only needed there.
 services:
   fe:
     image: emobase-portal-web:local
@@ -48,14 +43,3 @@ services:
     image: emobase-genomics:local
     build:
       context: ../emobase-genomics
-
-  blast:
-    command:
-      - sh
-      - -c
-      - |
-        sed -i 's|redirect to("/#{job.id}")|redirect to("'$${PUBLIC_SERVER}'/ibb/blast/#{job.id}")|g' \
-          /sequenceserver/lib/sequenceserver/routes.rb
-        sequenceserver -r /opt/ss_open3.rb
-    volumes:
-      - ./blast/sys_open3.rb:/opt/ss_open3.rb:ro

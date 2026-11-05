@@ -175,20 +175,6 @@ docker compose -f compose.yml -f compose.local.yml up -d --build
 `compose.local.yml` is not loaded automatically, so a plain
 `docker compose up -d` always uses the published images.
 
-### BLAST on Apple Silicon
-
-The SequenceServer image is amd64-only. Under QEMU on arm64 hosts its startup
-`fork` can deadlock, so `/ibb/blast/` returns `502` even though the databases
-exist. `compose.local.yml` mounts `blast/sys_open3.rb`, which replaces
-SequenceServer's `fork`+`exec` helper with `Open3`, and starts it with `-r`:
-
-```bash
-docker compose -f compose.yml -f compose.local.yml up -d blast
-```
-
-Plain `docker compose up -d blast` keeps using the stock image behaviour, which
-is what x86_64 production servers should use.
-
 For the one-shot services:
 
 ```bash
@@ -246,10 +232,6 @@ smoke test reports that as a warning; set `STRICT_BLAST=1` to make it fatal.
 - `/var/run/docker.sock` is mounted into the workers because they restart the
   `blast` container after rebuilding databases. The container name is controlled
   by `BLAST_CONTAINER_NAME` and must match the `blast` service.
-- BLAST databases are created by the genomics workers (`SETUP_BLAST` jobs) from
-  a release and written to the `blast-data` volume; there is no separate
-  `setup-blast` service. Check `/ibb/blast/searchdata.json` to see what the
-  running SequenceServer has picked up.
 - `MAIN_SPECIES` is still required by emobase-genomics. It only affects legacy
   single-species endpoints; all assemblies in a release are served in
   multi-species mode.
