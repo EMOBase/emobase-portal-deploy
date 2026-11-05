@@ -172,6 +172,11 @@ services:
       - |
         sed -i 's|redirect to("/#{job.id}")|redirect to("'$${PUBLIC_SERVER}'/ibb/blast/#{job.id}")|g' \
           /sequenceserver/lib/sequenceserver/routes.rb
+        # SequenceServer emits root-absolute asset URLs by default, which 404
+        # when it is proxied under /ibb/blast/. Point its asset prefix at the
+        # public subpath so CSS, the logo, and fonts load correctly.
+        sed -i "s|set :asset_prefix, ''|set :asset_prefix, '/ibb/blast'|" \
+          /sequenceserver/lib/sequenceserver/routes.rb
         sequenceserver -r /opt/links_jbrowse2.rb
     environment:
       PUBLIC_SERVER: ${PUBLIC_SERVER}
