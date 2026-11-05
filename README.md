@@ -6,6 +6,11 @@ and Keycloak for authentication.
 
 A deployment server only needs **this repository plus Docker**.
 
+> **Starting from an empty server?** Follow the complete two-repository
+> runbook in [DEPLOYMENT.md](DEPLOYMENT.md). It covers the portal plus
+> `emobase-deploy`, the URL hand-off between them, TLS, updates and backups.
+> The quick start below is the portal half.
+
 ## Services
 
 | Service | Purpose |
@@ -37,6 +42,7 @@ the `/ibb/...` paths that the web UI uses by default:
 
 - Docker Engine 24+ with Compose v2
 - Outbound HTTPS access to `ghcr.io`
+- A public URL (or host:port) for the portal
 - The images are public, so no registry login is normally needed. If the
   packages are private, log in once:
 
@@ -46,20 +52,22 @@ the `/ibb/...` paths that the web UI uses by default:
 
   The token needs the `read:packages` scope.
 
-## First start (deployment server)
+## Quick start (portal)
 
 `compose.yml` contains no `build:` sections.
 
-1. Create the environment file and set strong secrets:
+1. Generate `.env`:
 
    ```bash
-   cp .env.example .env
-   # edit .env: PUBLIC_SERVER, HTTP_PORT, image tags and all secrets
+   ./init.sh --public-server https://portal.example.org --http-port 9091 --species Tcas
    ```
 
-   Generate secrets with `openssl rand -base64 48`.
+   The script asks for missing values and generates all secrets. Review `.env`
+   before continuing: image tags, `MAIN_SPECIES`, and the JBrowse2 gene-link
+   base. For a local test, leave the defaults:
+   `./init.sh --yes`.
 
-2. Pull the images (including the one-shot setup/update services):
+2. Pull images (including the one-shot setup/update services):
 
    ```bash
    docker compose --profile '*' pull
@@ -76,19 +84,14 @@ the `/ibb/...` paths that the web UI uses by default:
    The migration commands start their dependency (`mysql` or `es`), wait until
    it is healthy, then exit. The JBrowse2 setup only uses the shared volume.
 
-4. Start the stack:
+4. Start the stack and verify:
 
    ```bash
-   docker compose up -d
-   ```
-
-5. Verify:
-
-   ```bash
+   docker compose up -d --wait
    ./scripts/smoke-test.sh
    ```
 
-6. Open `${PUBLIC_SERVER}`. Keycloak admin is at
+5. Open `${PUBLIC_SERVER}`. Keycloak admin is at
    `${PUBLIC_SERVER}/ibb/keycloak/admin/` using `KEYCLOAK_ADMIN` /
    `KEYCLOAK_ADMIN_PASSWORD`.
 
@@ -100,6 +103,68 @@ console.
 The migrations must run **before the portal web UI is used**. If they are
 skipped the API returns `500` because tables such as `versions` do not exist
 yet.
+
+`/ibb/blast/` may return `502` until the first release has built BLAST
+databases. The smoke test reports that as a warning; set `STRICT_BLAST=1` to
+make it fatal.
+
+### Local trial (no domain)
+
+Without DNS or TLS, let the script use the machine's LAN IP:
+
+```bash
+./init.sh --local --species Tcas
+```
+
+Then continue with the pull/setup/start steps above and open the URL that
+`init.sh` prints. If the detected IP is wrong:
+
+```bash
+./init.sh --local --public-server http://192.168.1.10:9091
+```
+
+The LAN IP matters because the species nginx container must reach the portal.
+`localhost` cannot be used as `PORTAL_SERVER`. For the full local walkthrough,
+including the species stack, see
+[Local setup](DEPLOYMENT.md#local-setup-no-public-server).
+
+## Pairing with emobase-deploy
+
+`emobase-deploy` runs the single-species UI and consumes this portal for
+genomics, JBrowse2 and BLAST. Deploy the portal first.
+
+The hand-off is one value:
+
+| Where | Variable | Value |
+| --- | --- | --- |
+| Portal `.env` | `PUBLIC_SERVER` | The portal's public URL |
+| Species `.env` | `PORTAL_SERVER` | **The same portal URL** |
+| Species `.env` | `PUBLIC_SERVER` | The species site's own public URL |
+
+With both repositories cloned into the same parent directory, the species
+initialiser copies the value automatically:
+
+```bash
+cd ../emobase-deploy
+./init.sh \
+  --species Tcas \
+  --public-server https://tcas.example.org \
+  --portal-dir ../emobase-portal-deploy
+docker compose run --rm setup-directus
+docker compose up -d --wait
+```
+
+Without `--portal-dir`, `emobase-deploy/init.sh` looks for
+`../emobase-portal-deploy/.env` automatically. On a separate server, pass
+`--portal-server https://portal.example.org` instead. See
+[`../emobase-deploy/README.md`](../emobase-deploy/README.md) and
+[DEPLOYMENT.md](DEPLOYMENT.md).
+
+The portal URL must be reachable from the species server: the species nginx
+proxies `/ibb/blast/` to `${PORTAL_SERVER}/ibb/blast/` so BLAST stays
+same-origin with the species UI. When both stacks share one Docker host, use
+the host's IP or a DNS name for `PORTAL_SERVER`; `localhost` would point at the
+species nginx container itself.
 
 ## Images
 
@@ -185,12 +250,14 @@ origin embeds the BLAST page.
 
 ## Updating a deployment
 
+Update the portal before any species deployment that depends on it:
+
 ```bash
 git pull
 docker compose --profile '*' pull
 docker compose --profile update run --rm migrate-genomics-db
 docker compose --profile update run --rm migrate-genomics-es
-docker compose up -d
+docker compose up -d --wait
 ```
 
 Because `compose.yml` uses image tags, a plain `docker compose up -d` will not
@@ -201,14 +268,13 @@ tag in `.env` and run the same commands.
 ## Testing the whole setup
 
 1. Simulate a fresh deployment server: clone **only** this repository into a
-   temporary directory (no `../emobase-*` source directories), create `.env`,
-   then follow “First start”. This proves the stack is self-contained.
+   temporary directory (no `../emobase-*` source directories), create `.env`
+   with `./init.sh`, then follow “Quick start”. This proves the stack is
+   self-contained.
 2. Run `./scripts/smoke-test.sh` and open the portal web UI in a browser. Sign
    in, then check that `/admin/versions` loads without the `versions` 500.
-
-`/ibb/blast/` returns `502` until the first release has built BLAST databases
-(SequenceServer does not serve the UI with an empty database directory). The
-smoke test reports that as a warning; set `STRICT_BLAST=1` to make it fatal.
+3. If `emobase-deploy` is part of the test, repeat the checks from
+   [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ## Notes
 
