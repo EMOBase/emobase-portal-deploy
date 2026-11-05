@@ -235,6 +235,10 @@ smoke test reports that as a warning; set `STRICT_BLAST=1` to make it fatal.
 - `MAIN_SPECIES` is still required by emobase-genomics. It only affects legacy
   single-species endpoints; all assemblies in a release are served in
   multi-species mode.
+- `/public/versions` is global: it returns READY versions for every species in
+  this portal. A single-species `emobase-deploy` UI pointed at this portal may
+  therefore list versions that belong to other species until species filtering
+  is added to the endpoint.
 - To reset everything (destroys data):
 
   ```bash
