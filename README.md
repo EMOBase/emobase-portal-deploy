@@ -175,6 +175,23 @@ docker compose -f compose.yml -f compose.local.yml up -d --build
 `compose.local.yml` is not loaded automatically, so a plain
 `docker compose up -d` always uses the published images.
 
+### BLAST on Apple Silicon
+
+The SequenceServer image is published for `linux/amd64` only. On an Apple
+Silicon host Docker must therefore emulate it, and QEMU's user-mode emulation
+deadlocks during SequenceServer startup: the container never binds port 4567
+and `/ibb/blast/` returns `502` even when the databases exist.
+
+Enable **Settings → General → Use Virtualization framework** and **Use Rosetta
+for x86_64/amd64 emulation**, then restart Docker Desktop. Rosetta runs the
+same amd64 image with the stock startup code, so no file in this repository
+needs to change. Check that it is active with:
+
+```bash
+docker run --rm --platform linux/amd64 alpine sh -c 'ls -l /proc/1/exe'
+# expect: /proc/1/exe -> /run/rosetta/rosetta
+```
+
 For the one-shot services:
 
 ```bash
@@ -232,6 +249,10 @@ smoke test reports that as a warning; set `STRICT_BLAST=1` to make it fatal.
 - `/var/run/docker.sock` is mounted into the workers because they restart the
   `blast` container after rebuilding databases. The container name is controlled
   by `BLAST_CONTAINER_NAME` and must match the `blast` service.
+- BLAST databases are created by the genomics workers (`SETUP_BLAST` jobs) from
+  a release and written to the `blast-data` volume; there is no separate
+  `setup-blast` service. Check `/ibb/blast/searchdata.json` to see what the
+  running SequenceServer has picked up.
 - `MAIN_SPECIES` is still required by emobase-genomics. It only affects legacy
   single-species endpoints; all assemblies in a release are served in
   multi-species mode.
