@@ -4,9 +4,7 @@ Multi-species deployment stack: **emobase-portal-web** (Astro SSR UI) in front
 of **emobase-genomics** (API, workers, MySQL, Elasticsearch, JBrowse2, BLAST)
 and Keycloak for authentication.
 
-Application images are built and published by GitHub Actions, so a deployment
-server only needs **this repository plus Docker** — no sibling source trees and
-no local builds.
+A deployment server only needs **this repository plus Docker**.
 
 ## Services
 
@@ -50,7 +48,7 @@ the `/ibb/...` paths that the web UI uses by default:
 
 ## First start (deployment server)
 
-Only this repository is needed. `compose.yml` contains no `build:` sections.
+`compose.yml` contains no `build:` sections.
 
 1. Create the environment file and set strong secrets:
 
@@ -75,8 +73,8 @@ Only this repository is needed. `compose.yml` contains no `build:` sections.
    docker compose --profile update run --rm migrate-genomics-es
    ```
 
-   These `run` commands start only their dependencies (`mysql`, `es`), wait
-   until they are healthy, then exit.
+   The migration commands start their dependency (`mysql` or `es`), wait until
+   it is healthy, then exit. The JBrowse2 setup only uses the shared volume.
 
 4. Start the stack:
 
@@ -91,7 +89,7 @@ Only this repository is needed. `compose.yml` contains no `build:` sections.
    ```
 
 6. Open `${PUBLIC_SERVER}`. Keycloak admin is at
-   `${PUBLIC_SERVER}/ibb/keycloak/` using `KEYCLOAK_ADMIN` /
+   `${PUBLIC_SERVER}/ibb/keycloak/admin/` using `KEYCLOAK_ADMIN` /
    `KEYCLOAK_ADMIN_PASSWORD`.
 
 The imported realm user (`COCO_USERNAME`) has the `default-roles-ibb` role and
@@ -103,60 +101,18 @@ The migrations must run **before the portal web UI is used**. If they are
 skipped the API returns `500` because tables such as `versions` do not exist
 yet.
 
-## Image pipeline
+## Images
 
-`emobase-portal-web` and `emobase-genomics` publish multi-architecture images
-(`linux/amd64` + `linux/arm64`) to GitHub Container Registry:
+The two EMOBase images are published to GitHub Container Registry:
 
-| Repository | Image |
+| Image | Source repository |
 | --- | --- |
-| `EMOBase/emobase-portal-web` | `ghcr.io/emobase/emobase-portal-web` |
-| `EMOBase/emobase-genomics` | `ghcr.io/emobase/emobase-genomics` |
+| `ghcr.io/emobase/emobase-portal-web` | `EMOBase/emobase-portal-web` |
+| `ghcr.io/emobase/emobase-genomics` | `EMOBase/emobase-genomics` |
 
-Workflow files:
-
-| Repository | Workflow | Automatic triggers |
-| --- | --- | --- |
-| `emobase-portal-web` | `.github/workflows/docker-publish.yml` | pushes to `main`/`dev`, `v*` tags, PRs to `main`/`dev` (amd64 only, no push), manual |
-| `emobase-genomics` | `.github/workflows/build.yml` | same |
-
-Only the deployment branches (`main`, `dev`) build automatically. To publish an
-unmerged feature branch on demand, use **Actions → Run workflow**, or:
-
-```bash
-gh workflow run docker-publish.yml --ref <branch>   # emobase-portal-web
-gh workflow run build.yml --ref <branch>            # emobase-genomics
-```
-
-A manual run publishes `:<branch>` and `:sha-<short>` using the cross-platform
-build (amd64 + arm64).
-
-Tags for `main` / `dev` pushes:
-
-| Tag | Meaning |
-| --- | --- |
-| `main` / `dev` | newest build of that deployment branch |
-| `sha-<short>` | immutable build of that commit |
-| `latest` | newest build of the default branch (`main`) only |
-
-Tags for a Git tag `v1.2.3`: `v1.2.3`, `1.2.3`, `1.2`, plus `sha-<short>`.
-
-The multi-species genomics work lives on `emobase-genomics` `dev`; every push
-to `dev` publishes `:dev` automatically. `.env.example` pins:
-
-```dotenv
-EMOBASE_GENOMICS_IMAGE=ghcr.io/emobase/emobase-genomics:dev
-EMOBASE_PORTAL_WEB_IMAGE=ghcr.io/emobase/emobase-portal-web:main
-```
-
-An unmerged feature branch can still be published on demand (see above) and
-used the same way with its branch tag. For production, prefer a release tag or
-immutable SHA:
-
-```dotenv
-EMOBASE_GENOMICS_IMAGE=ghcr.io/emobase/emobase-genomics:sha-abc1234
-EMOBASE_PORTAL_WEB_IMAGE=ghcr.io/emobase/emobase-portal-web:v1.0.0
-```
+Both are multi-architecture (`linux/amd64` + `linux/arm64`). Image tags,
+pinning and branch guidance are documented in `.env.example`; pull-request
+builds are `linux/amd64` only and are not pushed.
 
 ### One-time package visibility
 
@@ -174,6 +130,23 @@ docker compose -f compose.yml -f compose.local.yml up -d --build
 
 `compose.local.yml` is not loaded automatically, so a plain
 `docker compose up -d` always uses the published images.
+
+For the one-shot services:
+
+```bash
+docker compose -f compose.yml -f compose.local.yml --profile setup run --rm --build setup-jbrowse2-web
+docker compose -f compose.yml -f compose.local.yml --profile update run --rm --build migrate-genomics-db
+docker compose -f compose.yml -f compose.local.yml --profile update run --rm --build migrate-genomics-es
+```
+
+To test a locally built image with the normal compose file, give it the same
+name as the published image and set the tag in `.env`:
+
+```bash
+docker build -t ghcr.io/emobase/emobase-genomics:test ../emobase-genomics
+# .env: EMOBASE_GENOMICS_IMAGE=ghcr.io/emobase/emobase-genomics:test
+docker compose up -d
+```
 
 ### BLAST on Apple Silicon
 
@@ -207,25 +180,8 @@ so the results page does not run a `blastdbcmd` lookup per hit.
 The extension reads assembly track IDs from the shared JBrowse2 config, so the
 `blast` service mounts `jbrowse2-data` read-only at `/jbrowse2`.
 
-The link is absolute to `PUBLIC_SERVER`, so it also works when the BLAST page
-is embedded by a species deployment that only proxies `/ibb/blast/` and loads
-JBrowse2 directly from the portal.
-
-For the one-shot services:
-
-```bash
-docker compose -f compose.yml -f compose.local.yml --profile setup run --rm --build setup-jbrowse2-web
-docker compose -f compose.yml -f compose.local.yml --profile update run --rm --build migrate-genomics-db
-```
-
-To test a locally built image with the normal compose file, give it the same
-name as the published image and set the tag in `.env`:
-
-```bash
-docker build -t ghcr.io/emobase/emobase-genomics:test ../emobase-genomics
-# .env: EMOBASE_GENOMICS_IMAGE=ghcr.io/emobase/emobase-genomics:test
-docker compose up -d
-```
+The link is absolute to `PUBLIC_SERVER`, so it works regardless of which
+origin embeds the BLAST page.
 
 ## Updating a deployment
 
@@ -244,19 +200,10 @@ tag in `.env` and run the same commands.
 
 ## Testing the whole setup
 
-1. Push a branch to `emobase-portal-web` or `emobase-genomics` and watch the
-   **Actions** tab. A green run publishes the branch tag.
-2. Confirm the image exists for both architectures:
-
-   ```bash
-   docker manifest inspect ghcr.io/emobase/emobase-genomics:dev \
-     | grep -A2 '"architecture"'
-   ```
-
-3. Simulate a fresh deployment server: clone **only** this repository into a
+1. Simulate a fresh deployment server: clone **only** this repository into a
    temporary directory (no `../emobase-*` source directories), create `.env`,
    then follow “First start”. This proves the stack is self-contained.
-4. Run `./scripts/smoke-test.sh` and open the portal web UI in a browser. Sign
+2. Run `./scripts/smoke-test.sh` and open the portal web UI in a browser. Sign
    in, then check that `/admin/versions` loads without the `versions` 500.
 
 `/ibb/blast/` returns `502` until the first release has built BLAST databases
@@ -276,9 +223,8 @@ smoke test reports that as a warning; set `STRICT_BLAST=1` to make it fatal.
   single-species endpoints; all assemblies in a release are served in
   multi-species mode.
 - `/public/versions` is global: it returns READY versions for every species in
-  this portal. A single-species `emobase-deploy` UI pointed at this portal may
-  therefore list versions that belong to other species until species filtering
-  is added to the endpoint.
+  this portal, so a single-species client may list versions from other species
+  until species filtering is added to the endpoint.
 - To reset everything (destroys data):
 
   ```bash
