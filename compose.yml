@@ -14,10 +14,6 @@ x-genomics-service: &genomics-service
 # these with Viper using EMOBASE_GENOMICS_ as the environment prefix.
 x-genomics-environment: &genomics-environment
   EMOBASE_GENOMICS_ENV_PREFIX: emobase_genomics
-  # emobase-genomics still requires a main species at startup. Multi-species
-  # data is served per assembly version; this only controls legacy single-species
-  # endpoints (direct gene search and silencing sequences).
-  EMOBASE_GENOMICS_MAIN_SPECIES: ${MAIN_SPECIES:-Tcas}
   EMOBASE_GENOMICS_HTTP__MODE: ${EMOBASE_GENOMICS_HTTP__MODE:-release}
   EMOBASE_GENOMICS_MYSQL__HOST: mysql
   EMOBASE_GENOMICS_MYSQL__PORT: ${EMOBASE_GENOMICS_MYSQL__PORT:-3306}

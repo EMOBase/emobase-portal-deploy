@@ -242,7 +242,7 @@ configured) to keep that traffic internal; otherwise it defaults to
 
 ```bash
 cd ~/emobase/emobase-portal-deploy
-./init.sh --public-server https://portal.example.org --http-port 9091 --species Tcas
+./init.sh --public-server https://portal.example.org --http-port 9091
 ```
 
 `init.sh` asks for anything not passed as a flag and generates the secrets. It
@@ -253,8 +253,8 @@ especially:
 - `HTTP_PORT` — the host port nginx binds
 - `EMOBASE_GENOMICS_IMAGE`, `EMOBASE_PORTAL_WEB_IMAGE` — pin a release/SHA tag
   for production instead of a moving branch tag
-- `MAIN_SPECIES` and `EMOBASE_GENOMICS_JBROWSE2__GENE_LINK_BASE` — adjust for
-  the species you are deploying
+- `EMOBASE_GENOMICS_JBROWSE2__GENE_LINK_BASE` — the gene detail link base used
+  by JBrowse2
 
 Then pull images, initialise JBrowse2, run the migrations and start:
 

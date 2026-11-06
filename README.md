@@ -59,12 +59,12 @@ the `/ibb/...` paths that the web UI uses by default:
 1. Generate `.env`:
 
    ```bash
-   ./init.sh --public-server https://portal.example.org --http-port 9091 --species Tcas
+   ./init.sh --public-server https://portal.example.org --http-port 9091
    ```
 
    The script asks for missing values and generates all secrets. Review `.env`
-   before continuing: image tags, `MAIN_SPECIES`, and the JBrowse2 gene-link
-   base. For a local test, leave the defaults:
+   before continuing: image tags and the JBrowse2 gene-link base. For a local
+   test, leave the defaults:
    `./init.sh --yes`.
 
 2. Pull images (including the one-shot setup/update services):
@@ -113,7 +113,7 @@ make it fatal.
 Without DNS or TLS, use `localhost` for the browser URLs:
 
 ```bash
-./init.sh --local --species Tcas
+./init.sh --local
 ```
 
 Then continue with the pull/setup/start steps above and open
@@ -287,9 +287,8 @@ tag in `.env` and run the same commands.
   a release and written to the `blast-data` volume. Check
   `/ibb/blast/searchdata.json` to see what the running SequenceServer has
   picked up.
-- `MAIN_SPECIES` is still required by emobase-genomics. It only affects legacy
-  single-species endpoints; all assemblies in a release are served in
-  multi-species mode.
+- There is no main-species setting: emobase-genomics serves every assembly in a
+  release, and the legacy single-species endpoints default to Tcas internally.
 - `/public/versions` is global: it returns READY versions for every species in
   this portal, so a single-species client may list versions from other species
   until species filtering is added to the endpoint.

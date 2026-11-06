@@ -19,12 +19,10 @@ PRINT=false
 LOCAL=false
 PUBLIC_SERVER=
 HTTP_PORT=
-MAIN_SPECIES=
 GENE_LINK_BASE=
 
 DEFAULT_PUBLIC_SERVER="http://localhost:9091"
 DEFAULT_HTTP_PORT=9091
-DEFAULT_MAIN_SPECIES=Tcas
 DEFAULT_GENE_LINK_BASE="https://ibeetle-base.uni-goettingen.de/details/"
 
 fatal() {
@@ -58,10 +56,9 @@ generate_password() {
 }
 
 usage() {
-  echo "Usage: $0 [-f|--force] [-p|--print] [-y|--yes] [--local] [--public-server URL] [--http-port PORT] [--species SPECIES] [--gene-link-base URL]"
+  echo "Usage: $0 [-f|--force] [-p|--print] [-y|--yes] [--local] [--public-server URL] [--http-port PORT] [--gene-link-base URL]"
   echo "  --public-server    Public URL of the portal (default: ${DEFAULT_PUBLIC_SERVER})"
   echo "  --http-port        Host port for nginx (default: ${DEFAULT_HTTP_PORT})"
-  echo "  --species          4-letter species code used by legacy endpoints (default: ${DEFAULT_MAIN_SPECIES})"
   echo "  --gene-link-base   Gene detail URL used by JBrowse2 links"
   echo "  --local            Use localhost in PUBLIC_SERVER for a local trial"
   echo "  -f, --force        Overwrite an existing .env file"
@@ -79,10 +76,6 @@ while [[ $# -gt 0 ]]; do
       ;;
     --http-port)
       HTTP_PORT="$2"
-      shift 2
-      ;;
-    --species)
-      MAIN_SPECIES="$2"
       shift 2
       ;;
     --gene-link-base)
@@ -156,16 +149,6 @@ fi
 [[ "$HTTP_PORT" =~ ^[0-9]+$ ]] && (( 10#$HTTP_PORT >= 1 && 10#$HTTP_PORT <= 65535 )) \
   || fatal "HTTP_PORT must be a number between 1 and 65535"
 
-if [[ -z "$MAIN_SPECIES" ]]; then
-  if [[ "$YES" == true ]]; then
-    MAIN_SPECIES=${DEFAULT_MAIN_SPECIES}
-  else
-    read -rp "🧬 4-letter species code [${DEFAULT_MAIN_SPECIES}]: " MAIN_SPECIES
-    MAIN_SPECIES="${MAIN_SPECIES:-${DEFAULT_MAIN_SPECIES}}"
-  fi
-fi
-[[ -z "$MAIN_SPECIES" ]] && fatal "MAIN_SPECIES cannot be empty"
-
 if [[ -z "$GENE_LINK_BASE" ]]; then
   if [[ "$YES" != true ]]; then
     read -rp "🔗 Gene detail link base [${DEFAULT_GENE_LINK_BASE}]: " GENE_LINK_BASE
@@ -186,10 +169,6 @@ HTTP_PORT=${HTTP_PORT}
 PUBLIC_DATA_DIR=./data/public
 
 # ── EMOBase Genomics ────────────────────────────────────────────────────────
-# Still required by emobase-genomics at startup. Multi-species data is served
-# per assembly version; this only controls legacy single-species endpoints.
-MAIN_SPECIES=${MAIN_SPECIES}
-
 EMOBASE_GENOMICS_MYSQL__DATABASE=emobase_genomics
 EMOBASE_GENOMICS_MYSQL__USER=root
 EMOBASE_GENOMICS_MYSQL__PORT=3306
@@ -244,7 +223,7 @@ mkdir -p data/public/emobase-genomics
 >&2 echo "   nginx port: ${HTTP_PORT}"
 >&2 echo
 >&2 echo "Next:"
->&2 echo "  1. Review .env (image tags, MAIN_SPECIES, secrets)."
+>&2 echo "  1. Review .env (image tags, secrets)."
 >&2 echo "  2. docker compose --profile '*' pull"
 >&2 echo "  3. docker compose --profile setup run --rm setup-jbrowse2-web"
 >&2 echo "  4. docker compose --profile update run --rm migrate-genomics-db"
