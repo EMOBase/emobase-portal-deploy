@@ -46,14 +46,15 @@ services:
       PUBLIC_SERVER: ${PUBLIC_SERVER}
       # All public URLs are relative paths by convention; the web UI resolves
       # them against PUBLIC_SERVER (see getUrlEnv in emobase-portal-web).
-      # Server-to-server calls to genomicsservice use the internal container
-      # network thanks to INTERNAL_API_NETWORKING.
+      # Server-to-server calls use explicit internal URLs and fall back to the
+      # matching public URL when they are not set.
       PUBLIC_APIS_BASE_URL: /ibb/api
       PUBLIC_DOWNLOAD_URL: /download/
       PUBLIC_UI_PAGE_GENOMEBROWSER: /ibb/jbrowse2/
       PUBLIC_UI_PAGE_BLAST: /ibb/blast/
       PUBLIC_UI_PAGE_API_DOC: /ibb/api/genomicsservice/v1/docs
-      INTERNAL_API_NETWORKING: "true"
+      INTERNAL_API_GENOMICS_SERVICE: ${INTERNAL_API_GENOMICS_SERVICE:-http://genomicsservice:8080}
+      INTERNAL_KEYCLOAK_ISSUER: ${INTERNAL_KEYCLOAK_ISSUER:-http://keycloak:8080/ibb/keycloak/realms/ibb}
       AUTH_SECRET: ${AUTH_SECRET}
       AUTH_TRUST_HOST: "true"
       KEYCLOAK_ISSUER: /ibb/keycloak/realms/ibb

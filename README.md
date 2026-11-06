@@ -110,22 +110,19 @@ make it fatal.
 
 ### Local trial (no domain)
 
-Without DNS or TLS, let the script use the machine's LAN IP:
+Without DNS or TLS, use `localhost` for the browser URLs:
 
 ```bash
 ./init.sh --local --species Tcas
 ```
 
-Then continue with the pull/setup/start steps above and open the URL that
-`init.sh` prints. If the detected IP is wrong:
+Then continue with the pull/setup/start steps above and open
+`http://localhost:9091`.
 
-```bash
-./init.sh --local --public-server http://192.168.1.10:9091
-```
-
-The LAN IP matters because the species nginx container must reach the portal.
-`localhost` cannot be used as `PORTAL_SERVER`. For the full local walkthrough,
-including the species stack, see
+The species checkout uses `INTERNAL_*` URLs for calls made from inside its
+containers, and `PORTAL_INTERNAL_URL` for the BLAST proxy. Therefore
+`localhost` does not have to be reachable from those containers. For the full
+local walkthrough, including the species stack, see
 [Local setup](DEPLOYMENT.md#local-setup-no-public-server).
 
 ## Pairing with emobase-deploy
@@ -133,12 +130,14 @@ including the species stack, see
 `emobase-deploy` runs the single-species UI and consumes this portal for
 genomics, JBrowse2 and BLAST. Deploy the portal first.
 
-The hand-off is one value:
+The hand-off is one public value, plus the optional internal URLs:
 
 | Where | Variable | Value |
 | --- | --- | --- |
 | Portal `.env` | `PUBLIC_SERVER` | The portal's public URL |
 | Species `.env` | `PORTAL_SERVER` | **The same portal URL** |
+| Species `.env` | `PORTAL_INTERNAL_URL` | Portal origin used by nginx for BLAST |
+| Species `.env` | `INTERNAL_*` | Server-side service URLs, if different from public |
 | Species `.env` | `PUBLIC_SERVER` | The species site's own public URL |
 
 With both repositories cloned into the same parent directory, the species
@@ -160,11 +159,14 @@ Without `--portal-dir`, `emobase-deploy/init.sh` looks for
 [`../emobase-deploy/README.md`](../emobase-deploy/README.md) and
 [DEPLOYMENT.md](DEPLOYMENT.md).
 
-The portal URL must be reachable from the species server: the species nginx
-proxies `/ibb/blast/` to `${PORTAL_SERVER}/ibb/blast/` so BLAST stays
-same-origin with the species UI. When both stacks share one Docker host, use
-the host's IP or a DNS name for `PORTAL_SERVER`; `localhost` would point at the
-species nginx container itself.
+The species nginx proxies `/ibb/blast/` to `PORTAL_INTERNAL_URL` so BLAST
+stays same-origin with the species UI. `PORTAL_INTERNAL_URL` defaults to
+`PORTAL_SERVER`, which is correct for separate servers. When both stacks share
+one Docker host, set it to an internal address such as
+`http://host.docker.internal:9091` (or a name on a shared Docker network, if
+configured); the browser-facing `PORTAL_SERVER` can stay
+`http://localhost:9091`. SSR API/Keycloak/Directus calls use the matching
+`INTERNAL_*` variables and fall back to the public URLs when those are absent.
 
 ## Images
 

@@ -57,36 +57,13 @@ generate_password() {
              for(i=1;i<=length;i++) printf a[i]; printf "\n"}'
 }
 
-# Best-effort non-loopback IPv4 used by --local. The address has to be
-# reachable from inside Docker as well, so 127.0.0.1/localhost is not enough.
-detect_local_ip() {
-  local ip=""
-
-  if command -v ipconfig >/dev/null 2>&1; then
-    ip=$(ipconfig getifaddr en0 2>/dev/null || true)
-    [[ -n "$ip" ]] || ip=$(ipconfig getifaddr en1 2>/dev/null || true)
-  fi
-
-  if [[ -z "$ip" ]] && command -v ip >/dev/null 2>&1; then
-    ip=$(ip route get 1.1.1.1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="src"){print $(i+1); exit}}')
-  fi
-
-  if [[ -z "$ip" ]] && command -v hostname >/dev/null 2>&1; then
-    ip=$(hostname -I 2>/dev/null | awk '{print $1}')
-  fi
-
-  [[ -n "$ip" ]] || return 1
-  [[ "$ip" == 127.* ]] && return 1
-  echo "$ip"
-}
-
 usage() {
   echo "Usage: $0 [-f|--force] [-p|--print] [-y|--yes] [--local] [--public-server URL] [--http-port PORT] [--species SPECIES] [--gene-link-base URL]"
   echo "  --public-server    Public URL of the portal (default: ${DEFAULT_PUBLIC_SERVER})"
   echo "  --http-port        Host port for nginx (default: ${DEFAULT_HTTP_PORT})"
   echo "  --species          4-letter species code used by legacy endpoints (default: ${DEFAULT_MAIN_SPECIES})"
   echo "  --gene-link-base   Gene detail URL used by JBrowse2 links"
-  echo "  --local            Use the machine's LAN IP in PUBLIC_SERVER for a local trial"
+  echo "  --local            Use localhost in PUBLIC_SERVER for a local trial"
   echo "  -f, --force        Overwrite an existing .env file"
   echo "  -y, --yes          Use defaults without prompting (secrets are still generated)"
   echo "  -p, --print        Print the generated .env to stdout instead of writing it"
@@ -149,8 +126,7 @@ fi
 # Ask for inputs
 if [[ "$LOCAL" == true ]] && [[ -z "$PUBLIC_SERVER" ]]; then
   HTTP_PORT="${HTTP_PORT:-$DEFAULT_HTTP_PORT}"
-  local_ip=$(detect_local_ip) || fatal "Could not detect a LAN IP; pass --public-server URL"
-  PUBLIC_SERVER="http://${local_ip}:${HTTP_PORT}"
+  PUBLIC_SERVER="http://localhost:${HTTP_PORT}"
   >&2 echo "🏠 Local mode: using ${PUBLIC_SERVER}"
 fi
 
@@ -164,7 +140,7 @@ if [[ -z "$PUBLIC_SERVER" ]]; then
 fi
 PUBLIC_SERVER="${PUBLIC_SERVER%/}"
 [[ -z "$PUBLIC_SERVER" ]] && fatal "PUBLIC_SERVER cannot be empty"
-if [[ "$PUBLIC_SERVER" == *localhost* ]] || [[ "$PUBLIC_SERVER" == *127.0.0.1* ]]; then
+if [[ "$LOCAL" != true ]] && { [[ "$PUBLIC_SERVER" == *localhost* ]] || [[ "$PUBLIC_SERVER" == *127.0.0.1* ]]; }; then
   >&2 echo "⚠️  PUBLIC_SERVER points at localhost; use a LAN IP or DNS name if another"
   >&2 echo "   machine or container must reach this portal."
 fi

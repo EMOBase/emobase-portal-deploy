@@ -13,8 +13,9 @@ from the portal, so it has nothing useful to show until the portal is running
 and a release exists.
 
 Both stacks can run on one server (the current default) or on separate servers.
-The only linkage is one URL: the species stack's `PORTAL_SERVER` must equal the
-portal stack's `PUBLIC_SERVER`.
+The linkage is one public URL: the species stack's `PORTAL_SERVER` must equal
+the portal stack's `PUBLIC_SERVER`. Same-host deployments can also set
+`PORTAL_INTERNAL_URL` so container-to-container traffic stays internal.
 
 No domain or TLS yet? Jump to [Local setup](#local-setup-no-public-server).
 
@@ -30,13 +31,20 @@ Browser ──► https://portal.example.org (emobase-portal-deploy, :9091)
 ## Local setup (no public server)
 
 Use this to try the whole stack on a laptop or desktop before any DNS/TLS
-exists. Both sites run over plain HTTP on ports `9090` and `9091`.
+exists. Both sites use `localhost` over plain HTTP on ports `9090` and `9091`.
 
-The one local-specific rule: **do not use `localhost` for `PORTAL_SERVER`**.
-The species nginx runs in a container and proxies BLAST to the portal, so
-`localhost` would mean the species container itself. Use the machine's LAN IP
-instead. `init.sh --local` detects that IP; open the same address in your
-browser.
+The browser and the containers need different views of the portal:
+
+- `PUBLIC_SERVER` / `PORTAL_SERVER` are the browser-facing URLs and can use
+  `localhost`.
+- `PORTAL_INTERNAL_URL` is used by species nginx for the BLAST proxy.
+- `INTERNAL_API_*`, `INTERNAL_KEYCLOAK_ISSUER` and `INTERNAL_DIRECTUS_URL` are
+  used for server-side calls.
+
+`init.sh --local` sets `PORTAL_INTERNAL_URL` to
+`http://host.docker.internal:<portal-port>` automatically, and writes the
+`INTERNAL_*` service URLs for the local stack. Docker Desktop provides
+`host.docker.internal`; on Linux the compose file maps it with `host-gateway`.
 
 Prerequisites: Docker Desktop or Docker Engine, both repositories cloned side
 by side, and ports `9090`/`9091` free. On Apple Silicon, enable Rosetta for
@@ -49,10 +57,10 @@ by side, and ports `9090`/`9091` free. On Apple Silicon, enable Rosetta for
    ./init.sh --local
    ```
 
-   If the detected IP is wrong, pass it explicitly:
+   This writes:
 
-   ```bash
-   ./init.sh --local --public-server http://192.168.1.10:9091
+   ```dotenv
+   PUBLIC_SERVER=http://localhost:9091
    ```
 
    Then start it exactly like a server deployment:
@@ -66,10 +74,10 @@ by side, and ports `9090`/`9091` free. On Apple Silicon, enable Rosetta for
    ./scripts/smoke-test.sh
    ```
 
-   `./init.sh --local` prints the chosen URL; open it in a browser.
+   Open `http://localhost:9091`.
 
-2. Species site. `--local` also uses the LAN IP, and the portal URL is copied
-   from the sibling checkout:
+2. Species site. `--local` uses localhost for the browser and copies the portal
+   URL from the sibling checkout:
 
    ```bash
    cd ../emobase-deploy
@@ -78,29 +86,44 @@ by side, and ports `9090`/`9091` free. On Apple Silicon, enable Rosetta for
    docker compose up -d --wait
    ```
 
-   If the portal checkout is not a sibling, pass its URL explicitly:
+   This writes approximately:
 
-   ```bash
-   ./init.sh --local --species Tcas --portal-server http://192.168.1.10:9091
+   ```dotenv
+   PUBLIC_SERVER=http://localhost:9090
+   PORTAL_SERVER=http://localhost:9091
+   PORTAL_INTERNAL_URL=http://host.docker.internal:9091
    ```
 
-   If the detected species IP is wrong, add
-   `--public-server http://<LAN-IP>:9090`.
+   Open `http://localhost:9090`.
 
-   Open the species URL printed by `init.sh` (normally
-   `http://<LAN-IP>:9090`).
+   If the portal is not a sibling checkout, pass
+   `--portal-server http://localhost:9091`; the internal URL is derived from
+   that port. To override it explicitly:
+
+   ```bash
+   ./init.sh --local --species Tcas \
+     --portal-server http://localhost:9091 \
+     --portal-internal-url http://host.docker.internal:9091
+   ```
 
 3. Check both sites, sign in with the seeded `coco` user, and confirm that
    JBrowse2/BLAST links point at the portal URL. BLAST returns `502` until the
    first release has built databases.
 
-4. To let a coworker open the same local deployment from another machine on
-   the network, use the same LAN IP URLs and allow ports `9090` and `9091` in
-   the host firewall. If the machine's IP changes (DHCP), re-run
-   `init.sh --local -f` in both checkouts and restart the stacks. Keycloak
-   imports its redirect URIs only once, so if login stops working after the IP
-   change, reset the local stacks (next step) or update the `ibb-client`
-   redirect URIs in the Keycloak admin console.
+4. For access from another machine on the LAN, use non-local public URLs:
+
+   ```bash
+   ./init.sh --public-server http://192.168.1.10:9091 -f
+   # then in emobase-deploy
+   ./init.sh --public-server http://192.168.1.10:9090 \
+     --portal-server http://192.168.1.10:9091 \
+     --portal-internal-url http://host.docker.internal:9091 \
+     --species Tcas -f
+   ```
+
+   Keycloak imports redirect URIs only once. If you change the public URL
+   after the first start, reset the local stacks (next step) or update the
+   `ibb-client` redirect URIs in the Keycloak admin console.
 
 5. To throw the local data away and start over:
 
@@ -176,9 +199,12 @@ Two common layouts:
 | Portal | `http://SERVER_IP:9091` | `emobase-portal-deploy/.env`: `PUBLIC_SERVER`, `HTTP_PORT=9091` |
 | Species | `http://SERVER_IP:9090` | `emobase-deploy/.env`: `PUBLIC_SERVER`, `HTTP_PORT=9090` |
 
-Use the server's LAN/public IP or a DNS name, **not `localhost`**: the species
-nginx runs in a container and proxies `/ibb/blast/` to `PORTAL_SERVER`, where
-`localhost` would mean the species nginx container itself.
+Use the server's LAN/public IP or a DNS name for the browser-facing URLs. When
+the portal and species stacks run on the same Docker host, also set the species
+`PORTAL_INTERNAL_URL` to an internal address such as
+`http://host.docker.internal:9091` (or a name on a shared Docker network, if
+configured), so BLAST and SSR calls do not go through the public URL.
+`localhost` is fine for browser URLs when the stacks use the internal URL.
 
 ### B. TLS reverse proxy (production)
 
@@ -205,8 +231,12 @@ With nginx, proxy to the same ports and forward `Host`, `X-Forwarded-Host`,
 `X-Forwarded-For` and `X-Forwarded-Proto`; both stacks already honour the
 forwarded headers.
 
-The portal URL must be reachable **from the species server**, not just from the
-browser, because the species nginx proxies `/ibb/blast/` to it.
+The portal URL must be reachable from the species server, not just from the
+browser, because the species nginx proxies `/ibb/blast/` to it. When both stacks
+are on the same server, set `PORTAL_INTERNAL_URL` to
+`http://host.docker.internal:9091` (or a name on a shared Docker network, if
+configured) to keep that traffic internal; otherwise it defaults to
+`PORTAL_SERVER`.
 
 ## 4. Deploy the portal
 
@@ -260,12 +290,13 @@ grep '^PUBLIC_SERVER=' ~/emobase/emobase-portal-deploy/.env
 
 ## 5. Deploy the species site
 
-`emobase-deploy` needs two different URLs:
+`emobase-deploy` needs two public URLs and an optional internal portal URL:
 
 | Variable | Meaning | Value |
 | --- | --- | --- |
 | `PUBLIC_SERVER` | The URL users open for **this species site** | e.g. `https://tcas.example.org` |
-| `PORTAL_SERVER` | The URL of the **portal** (genomics/JBrowse2/BLAST) | the portal's `PUBLIC_SERVER`, e.g. `https://portal.example.org` |
+| `PORTAL_SERVER` | Public portal URL used by browser links | the portal's `PUBLIC_SERVER`, e.g. `https://portal.example.org` |
+| `PORTAL_INTERNAL_URL` | Portal URL used inside containers | e.g. `http://host.docker.internal:9091` on the same host |
 
 Let `init.sh` copy the portal URL straight from the sibling checkout:
 
@@ -284,7 +315,19 @@ directory is named `../emobase-portal-deploy`, the flag can be omitted:
 ./init.sh --species Tcas --public-server https://tcas.example.org
 ```
 
-On a separate species server, pass the portal URL explicitly instead:
+On the same Docker host, add the internal portal URL so BLAST/SSR traffic does
+not leave through the public domain:
+
+```bash
+./init.sh \
+  --species Tcas \
+  --public-server https://tcas.example.org \
+  --portal-dir ../emobase-portal-deploy \
+  --portal-internal-url http://host.docker.internal:9091
+```
+
+On a separate species server, leave `PORTAL_INTERNAL_URL` as the default
+(`PORTAL_SERVER`) and pass the portal URL explicitly:
 
 ```bash
 ./init.sh \
@@ -446,6 +489,9 @@ Only do that if you can lose the data.
 - [ ] Portal stack up; smoke test passes
 - [ ] Species `.env` has `PUBLIC_SERVER` = species URL
 - [ ] Species `.env` has `PORTAL_SERVER` = portal `PUBLIC_SERVER`
+- [ ] Same-host deployments set `PORTAL_INTERNAL_URL` to an internal address
+- [ ] `INTERNAL_API_*`, `INTERNAL_KEYCLOAK_ISSUER`, `INTERNAL_DIRECTUS_URL` are
+      set or intentionally falling back to public URLs
 - [ ] Directus setup completed
 - [ ] Species stack up; both sites open in a browser
 - [ ] BLAST/JBrowse2 verified after the first release
