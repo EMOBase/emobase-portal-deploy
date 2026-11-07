@@ -96,41 +96,50 @@ by side, and ports `9090`/`9091` free. On Apple Silicon, enable Rosetta for
 
    Open `http://localhost:9090`.
 
-   If the portal is not a sibling checkout, pass
-   `--portal-server http://localhost:9091`; the internal URL is derived from
-   that port. To override it explicitly:
+   > **Note**
+   >
+   > If the portal is not a sibling checkout, pass
+   > `--portal-server http://localhost:9091`. The internal URL is derived from
+   > that port. Use `--portal-internal-url ...` only when it needs an explicit
+   > override:
+   >
+   > ```bash
+   > ./init.sh --local --species Tcas \
+   >   --portal-server http://localhost:9091 \
+   >   --portal-internal-url http://host.docker.internal:9091
+   > ```
 
-   ```bash
-   ./init.sh --local --species Tcas \
-     --portal-server http://localhost:9091 \
-     --portal-internal-url http://host.docker.internal:9091
-   ```
+### Verify the local setup
 
-3. Check both sites, sign in with the seeded `coco` user, and confirm that
-   JBrowse2/BLAST links point at the portal URL. BLAST returns `502` until the
-   first release has built databases.
+Sign in with the seeded `coco` user and confirm that JBrowse2/BLAST links point
+at the portal URL. BLAST returns `502` until the first release has built
+databases.
 
-4. For access from another machine on the LAN, use non-local public URLs:
+### Access from another machine (optional)
 
-   ```bash
-   ./init.sh --public-server http://192.168.1.10:9091 -f
-   # then in emobase-deploy
-   ./init.sh --public-server http://192.168.1.10:9090 \
-     --portal-server http://192.168.1.10:9091 \
-     --portal-internal-url http://host.docker.internal:9091 \
-     --species Tcas -f
-   ```
+For access from another machine on the LAN, use non-local public URLs:
 
-   Keycloak imports redirect URIs only once. If you change the public URL
-   after the first start, reset the local stacks (next step) or update the
-   `ibb-client` redirect URIs in the Keycloak admin console.
+```bash
+./init.sh --public-server http://192.168.1.10:9091 -f
+# then in emobase-deploy
+./init.sh --public-server http://192.168.1.10:9090 \
+  --portal-server http://192.168.1.10:9091 \
+  --portal-internal-url http://host.docker.internal:9091 \
+  --species Tcas -f
+```
 
-5. To throw the local data away and start over:
+Keycloak imports redirect URIs only once. If you change the public URL after
+the first start, reset the local stacks (see below) or update the `ibb-client`
+redirect URIs in the Keycloak admin console.
 
-   ```bash
-   cd emobase-portal-deploy && docker compose --profile '*' down -v
-   cd ../emobase-deploy && docker compose --profile '*' down -v
-   ```
+### Reset the local stacks (optional)
+
+To throw the local data away and start over:
+
+```bash
+cd emobase-portal-deploy && docker compose --profile '*' down -v
+cd ../emobase-deploy && docker compose --profile '*' down -v
+```
 
 ## 1. Prepare the server
 
