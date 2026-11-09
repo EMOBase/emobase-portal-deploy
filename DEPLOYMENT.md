@@ -5,7 +5,7 @@ repositories:
 
 | Repository | What it runs | Default host port |
 | --- | --- | --- |
-| `emobase-portal-deploy` | Portal UI, genomics API/workers, MySQL, Elasticsearch, Keycloak, JBrowse2, BLAST | `9091` |
+| `emobase-portal-deploy` | Portal UI, genomics API/workers, MySQL, Elasticsearch, Keycloak, JBrowse2, BLAST | `9080` |
 | `emobase-deploy` | Single-species UI, its own MySQL/Elasticsearch/Keycloak/Directus | `9090` |
 
 Deploy **the portal first**. The species UI reads genomics, JBrowse2 and BLAST
@@ -25,13 +25,14 @@ Browser ──► https://tcas.example.org  (emobase-deploy, :9090)
                ├── /ibb/blast/  proxied to ──► https://portal.example.org/ibb/blast/
                └── JBrowse2/API links ───────► https://portal.example.org/...
 
-Browser ──► https://portal.example.org (emobase-portal-deploy, :9091)
+Browser ──► https://portal.example.org (emobase-portal-deploy, :9080)
 ```
 
 ## Local setup (no public server)
 
 Use this to try the whole stack on a laptop or desktop before any DNS/TLS
-exists. Both sites use `localhost` over plain HTTP on ports `9090` and `9091`.
+exists. Both sites use `localhost` over plain HTTP on ports `9080` (portal) and
+`9090` (species).
 
 The browser and the containers need different views of the portal:
 
@@ -47,7 +48,7 @@ The browser and the containers need different views of the portal:
 `host.docker.internal`; on Linux the compose file maps it with `host-gateway`.
 
 Prerequisites: Docker Desktop or Docker Engine, both repositories cloned side
-by side, and ports `9090`/`9091` free. On Apple Silicon, enable Rosetta for
+by side, and ports `9080`/`9090` free. On Apple Silicon, enable Rosetta for
 `linux/amd64` first, or BLAST will not start (see the portal README).
 
 1. Portal:
@@ -60,7 +61,7 @@ by side, and ports `9090`/`9091` free. On Apple Silicon, enable Rosetta for
    This writes:
 
    ```dotenv
-   PUBLIC_SERVER=http://localhost:9091
+   PUBLIC_SERVER=http://localhost:9080
    ```
 
    Then start it exactly like a server deployment:
@@ -74,7 +75,7 @@ by side, and ports `9090`/`9091` free. On Apple Silicon, enable Rosetta for
    ./scripts/smoke-test.sh
    ```
 
-   Open `http://localhost:9091`.
+   Open `http://localhost:9080`.
 
 2. Species site. `--local` uses localhost for the browser and copies the portal
    URL from the sibling checkout:
@@ -90,8 +91,8 @@ by side, and ports `9090`/`9091` free. On Apple Silicon, enable Rosetta for
 
    ```dotenv
    PUBLIC_SERVER=http://localhost:9090
-   PORTAL_SERVER=http://localhost:9091
-   PORTAL_INTERNAL_URL=http://host.docker.internal:9091
+   PORTAL_SERVER=http://localhost:9080
+   PORTAL_INTERNAL_URL=http://host.docker.internal:9080
    ```
 
    Open `http://localhost:9090`.
@@ -99,14 +100,14 @@ by side, and ports `9090`/`9091` free. On Apple Silicon, enable Rosetta for
    > **Note**
    >
    > If the portal is not a sibling checkout, pass
-   > `--portal-server http://localhost:9091`. The internal URL is derived from
+   > `--portal-server http://localhost:9080`. The internal URL is derived from
    > that port. Use `--portal-internal-url ...` only when it needs an explicit
    > override:
    >
    > ```bash
    > ./init.sh --local --species Tcas \
-   >   --portal-server http://localhost:9091 \
-   >   --portal-internal-url http://host.docker.internal:9091
+   >   --portal-server http://localhost:9080 \
+   >   --portal-internal-url http://host.docker.internal:9080
    > ```
 
 ### Verify the local setup
@@ -120,11 +121,11 @@ databases.
 For access from another machine on the LAN, use non-local public URLs:
 
 ```bash
-./init.sh --public-server http://192.168.1.10:9091 -f
+./init.sh --public-server http://192.168.1.10:9080 -f
 # then in emobase-deploy
 ./init.sh --public-server http://192.168.1.10:9090 \
-  --portal-server http://192.168.1.10:9091 \
-  --portal-internal-url http://host.docker.internal:9091 \
+  --portal-server http://192.168.1.10:9080 \
+  --portal-internal-url http://host.docker.internal:9080 \
   --species Tcas -f
 ```
 
@@ -152,7 +153,7 @@ Requirements:
   Keycloak. 8 GB RAM is a practical minimum for both stacks on one machine;
   more is better once BLAST databases and releases grow.
 - DNS names (or one name plus ports) for both sites
-- Ports reachable by the browser: `9091` for the portal and `9090` for the
+- Ports reachable by the browser: `9080` for the portal and `9090` for the
   species site when using the built-in nginx directly
 
 If you use a TLS reverse proxy in front (recommended), let it listen on 80/443
@@ -205,13 +206,13 @@ Two common layouts:
 
 | Site | URL | Env file |
 | --- | --- | --- |
-| Portal | `http://SERVER_IP:9091` | `emobase-portal-deploy/.env`: `PUBLIC_SERVER`, `HTTP_PORT=9091` |
+| Portal | `http://SERVER_IP:9080` | `emobase-portal-deploy/.env`: `PUBLIC_SERVER`, `HTTP_PORT=9080` |
 | Species | `http://SERVER_IP:9090` | `emobase-deploy/.env`: `PUBLIC_SERVER`, `HTTP_PORT=9090` |
 
 Use the server's LAN/public IP or a DNS name for the browser-facing URLs. When
 the portal and species stacks run on the same Docker host, also set the species
 `PORTAL_INTERNAL_URL` to an internal address such as
-`http://host.docker.internal:9091` (or a name on a shared Docker network, if
+`http://host.docker.internal:9080` (or a name on a shared Docker network, if
 configured), so BLAST and SSR calls do not go through the public URL.
 `localhost` is fine for browser URLs when the stacks use the internal URL.
 
@@ -221,14 +222,14 @@ Example with two DNS names:
 
 | Site | Public URL | Proxy target |
 | --- | --- | --- |
-| Portal | `https://portal.example.org` | `http://127.0.0.1:9091` |
+| Portal | `https://portal.example.org` | `http://127.0.0.1:9080` |
 | Species | `https://tcas.example.org` | `http://127.0.0.1:9090` |
 
 A minimal Caddy configuration:
 
 ```caddyfile
 portal.example.org {
-    reverse_proxy 127.0.0.1:9091
+    reverse_proxy 127.0.0.1:9080
 }
 
 tcas.example.org {
@@ -243,7 +244,7 @@ forwarded headers.
 The portal URL must be reachable from the species server, not just from the
 browser, because the species nginx proxies `/ibb/blast/` to it. When both stacks
 are on the same server, set `PORTAL_INTERNAL_URL` to
-`http://host.docker.internal:9091` (or a name on a shared Docker network, if
+`http://host.docker.internal:9080` (or a name on a shared Docker network, if
 configured) to keep that traffic internal; otherwise it defaults to
 `PORTAL_SERVER`.
 
@@ -251,7 +252,7 @@ configured) to keep that traffic internal; otherwise it defaults to
 
 ```bash
 cd ~/emobase/emobase-portal-deploy
-./init.sh --public-server https://portal.example.org --http-port 9091
+./init.sh --public-server https://portal.example.org --http-port 9080
 ```
 
 `init.sh` asks for anything not passed as a flag and generates the secrets. It
@@ -306,7 +307,7 @@ grep '^PUBLIC_SERVER=' ~/emobase/emobase-portal-deploy/.env
 | --- | --- | --- |
 | `PUBLIC_SERVER` | The URL users open for **this species site** | e.g. `https://tcas.example.org` |
 | `PORTAL_SERVER` | Public portal URL used by browser links | the portal's `PUBLIC_SERVER`, e.g. `https://portal.example.org` |
-| `PORTAL_INTERNAL_URL` | Portal URL used inside containers | e.g. `http://host.docker.internal:9091` on the same host |
+| `PORTAL_INTERNAL_URL` | Portal URL used inside containers | e.g. `http://host.docker.internal:9080` on the same host |
 
 Let `init.sh` copy the portal URL straight from the sibling checkout:
 
@@ -333,7 +334,7 @@ not leave through the public domain:
   --species Tcas \
   --public-server https://tcas.example.org \
   --portal-dir ../emobase-portal-deploy \
-  --portal-internal-url http://host.docker.internal:9091
+  --portal-internal-url http://host.docker.internal:9080
 ```
 
 On a separate species server, leave `PORTAL_INTERNAL_URL` as the default

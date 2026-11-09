@@ -20,8 +20,8 @@ LOCAL=false
 PUBLIC_SERVER=
 HTTP_PORT=
 
-DEFAULT_PUBLIC_SERVER="http://localhost:9091"
-DEFAULT_HTTP_PORT=9091
+DEFAULT_PUBLIC_SERVER="http://localhost:9080"
+DEFAULT_HTTP_PORT=9080
 
 fatal() {
   >&2 echo "❌ $1"

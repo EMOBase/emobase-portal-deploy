@@ -59,7 +59,7 @@ the `/ibb/...` paths that the web UI uses by default:
 1. Generate `.env`:
 
    ```bash
-   ./init.sh --public-server https://portal.example.org --http-port 9091
+   ./init.sh --public-server https://portal.example.org --http-port 9080
    ```
 
    The script asks for missing values and generates all secrets. Review `.env`
@@ -116,7 +116,7 @@ Without DNS or TLS, use `localhost` for the browser URLs:
 ```
 
 Then continue with the pull/setup/start steps above and open
-`http://localhost:9091`.
+`http://localhost:9080`.
 
 The species checkout uses `INTERNAL_*` URLs for calls made from inside its
 containers, and `PORTAL_INTERNAL_URL` for the BLAST proxy. Therefore
@@ -162,9 +162,9 @@ The species nginx proxies `/ibb/blast/` to `PORTAL_INTERNAL_URL` so BLAST
 stays same-origin with the species UI. `PORTAL_INTERNAL_URL` defaults to
 `PORTAL_SERVER`, which is correct for separate servers. When both stacks share
 one Docker host, set it to an internal address such as
-`http://host.docker.internal:9091` (or a name on a shared Docker network, if
+`http://host.docker.internal:9080` (or a name on a shared Docker network, if
 configured); the browser-facing `PORTAL_SERVER` can stay
-`http://localhost:9091`. SSR API/Keycloak/Directus calls use the matching
+`http://localhost:9080`. SSR API/Keycloak/Directus calls use the matching
 `INTERNAL_*` variables and fall back to the public URLs when those are absent.
 
 ## Images

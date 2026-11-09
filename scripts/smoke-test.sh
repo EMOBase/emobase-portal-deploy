@@ -17,7 +17,7 @@ if [[ -f .env ]]; then
   set +a
 fi
 
-BASE="${PUBLIC_SERVER:-http://localhost:${HTTP_PORT:-9091}}"
+BASE="${PUBLIC_SERVER:-http://localhost:${HTTP_PORT:-9080}}"
 BASE="${BASE%/}"
 
 tmp="$(mktemp)"
