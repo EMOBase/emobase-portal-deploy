@@ -41,7 +41,11 @@ generate_password() {
   upper=$(LC_ALL=C tr -dc 'A-Z' </dev/urandom | head -c1)
   lower=$(LC_ALL=C tr -dc 'a-z' </dev/urandom | head -c1)
   digit=$(LC_ALL=C tr -dc '0-9' </dev/urandom | head -c1)
-  symbol=$(LC_ALL=C tr -dc '_+=-' </dev/urandom | head -c1)
+  # "+" is deliberately excluded: emobase-genomics builds the db:migrate DSN
+  # in MySQLMigrateDSN, and golang-migrate's MySQL driver url.QueryUnescape()s
+  # that password, turning "+" into a space. The API/workers use a different
+  # DSN builder and connect fine, but db:migrate fails with "Access denied".
+  symbol=$(LC_ALL=C tr -dc '_-=' </dev/urandom | head -c1)
 
   rest_length=$((length - 4))
   rest=$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c "$rest_length")
