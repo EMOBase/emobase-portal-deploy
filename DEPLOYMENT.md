@@ -262,8 +262,9 @@ especially:
 - `HTTP_PORT` — the host port nginx binds
 - `EMOBASE_GENOMICS_IMAGE`, `EMOBASE_PORTAL_WEB_IMAGE` — pin a release/SHA tag
   for production instead of a moving branch tag
-- `EMOBASE_GENOMICS_JBROWSE2__GENE_LINK_BASE` — the gene detail link base used
-  by JBrowse2
+
+JBrowse2 gene links are built from each assembly's `infoUrl` (set in the admin
+UI), not from an environment variable.
 
 Then pull images, initialise JBrowse2, run the migrations and start:
 

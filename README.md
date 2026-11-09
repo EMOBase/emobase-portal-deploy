@@ -63,9 +63,8 @@ the `/ibb/...` paths that the web UI uses by default:
    ```
 
    The script asks for missing values and generates all secrets. Review `.env`
-   before continuing: image tags and the JBrowse2 gene-link base. For a local
-   test, leave the defaults:
-   `./init.sh --yes`.
+   before continuing, especially the image tags. For a local test, leave the
+   defaults: `./init.sh --yes`.
 
 2. Pull images (including the one-shot setup/update services):
 

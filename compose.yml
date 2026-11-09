@@ -24,7 +24,6 @@ x-genomics-environment: &genomics-environment
   EMOBASE_GENOMICS_ELASTICSEARCH__INDEX_PREFIX: ${EMOBASE_GENOMICS_ELASTICSEARCH__INDEX_PREFIX:-genomics}
   EMOBASE_GENOMICS_BLAST__DISPLAY_NAME: ${EMOBASE_GENOMICS_BLAST__DISPLAY_NAME:-EMOBase}
   EMOBASE_GENOMICS_BLAST__CONTAINER_NAME: ${BLAST_CONTAINER_NAME:-emobase-portal-blast}
-  EMOBASE_GENOMICS_JBROWSE2__GENE_LINK_BASE: ${EMOBASE_GENOMICS_JBROWSE2__GENE_LINK_BASE:-https://ibeetle-base.uni-goettingen.de/details/}
 
 services:
   # ── Frontend web UI (Astro SSR) ──────────────────────────────────────────

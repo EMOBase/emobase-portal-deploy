@@ -19,11 +19,9 @@ PRINT=false
 LOCAL=false
 PUBLIC_SERVER=
 HTTP_PORT=
-GENE_LINK_BASE=
 
 DEFAULT_PUBLIC_SERVER="http://localhost:9091"
 DEFAULT_HTTP_PORT=9091
-DEFAULT_GENE_LINK_BASE="https://ibeetle-base.uni-goettingen.de/details/"
 
 fatal() {
   >&2 echo "❌ $1"
@@ -56,10 +54,9 @@ generate_password() {
 }
 
 usage() {
-  echo "Usage: $0 [-f|--force] [-p|--print] [-y|--yes] [--local] [--public-server URL] [--http-port PORT] [--gene-link-base URL]"
+  echo "Usage: $0 [-f|--force] [-p|--print] [-y|--yes] [--local] [--public-server URL] [--http-port PORT]"
   echo "  --public-server    Public URL of the portal (default: ${DEFAULT_PUBLIC_SERVER})"
   echo "  --http-port        Host port for nginx (default: ${DEFAULT_HTTP_PORT})"
-  echo "  --gene-link-base   Gene detail URL used by JBrowse2 links"
   echo "  --local            Use localhost in PUBLIC_SERVER for a local trial"
   echo "  -f, --force        Overwrite an existing .env file"
   echo "  -y, --yes          Use defaults without prompting (secrets are still generated)"
@@ -76,10 +73,6 @@ while [[ $# -gt 0 ]]; do
       ;;
     --http-port)
       HTTP_PORT="$2"
-      shift 2
-      ;;
-    --gene-link-base)
-      GENE_LINK_BASE="$2"
       shift 2
       ;;
     -f|--force)
@@ -149,13 +142,6 @@ fi
 [[ "$HTTP_PORT" =~ ^[0-9]+$ ]] && (( 10#$HTTP_PORT >= 1 && 10#$HTTP_PORT <= 65535 )) \
   || fatal "HTTP_PORT must be a number between 1 and 65535"
 
-if [[ -z "$GENE_LINK_BASE" ]]; then
-  if [[ "$YES" != true ]]; then
-    read -rp "🔗 Gene detail link base [${DEFAULT_GENE_LINK_BASE}]: " GENE_LINK_BASE
-  fi
-  GENE_LINK_BASE="${GENE_LINK_BASE:-${DEFAULT_GENE_LINK_BASE}}"
-fi
-
 ENV_CONTENT="# ── Deployment ──────────────────────────────────────────────────────────────
 # Public URL of the portal, including protocol and (if non-standard) port.
 # For production, put this behind TLS and set PUBLIC_SERVER to the https URL.
@@ -174,7 +160,6 @@ EMOBASE_GENOMICS_MYSQL__USER=root
 EMOBASE_GENOMICS_MYSQL__PORT=3306
 EMOBASE_GENOMICS_ELASTICSEARCH__INDEX_PREFIX=genomics
 EMOBASE_GENOMICS_BLAST__DISPLAY_NAME=EMOBase
-EMOBASE_GENOMICS_JBROWSE2__GENE_LINK_BASE=${GENE_LINK_BASE}
 
 # Must match the blast service container_name in compose.yml. Workers use it to
 # restart SequenceServer after rebuilding BLAST databases.
