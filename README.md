@@ -35,16 +35,17 @@ Keycloak also has its own per-server public URL (`KEYCLOAK_PUBLIC_URL`); the
 portal does not proxy it, and species authentication does not depend on the
 portal.
 
-The portal web UI is served at `/`. Genomics, BLAST and JBrowse2 keep the
-`/ibb/...` paths that the web UI uses by default:
+The portal web UI is served at `/`. The portal uses its own paths; the
+species-native `/ibb/...` paths belong to `emobase-deploy`. BLAST is proxied at
+`/blast/` on the portal and at `/ibb/blast/` on a species site:
 
 | Path | Backend |
 | --- | --- |
 | `/` | `fe:8080` |
 | `/download/` | `${PUBLIC_DATA_DIR}` on the host |
-| `/ibb/api/genomicsservice/v1/` | `genomicsservice:8080` |
-| `/ibb/jbrowse2/` | JBrowse2 data volume |
-| `/ibb/blast/` | `blast:4567` |
+| `/api/genomicsservice/v1/` | `genomicsservice:8080` |
+| `/jbrowse/` | JBrowse2 data volume |
+| `/blast/` | `blast:4567` |
 
 ## Prerequisites
 
@@ -72,7 +73,7 @@ running first; its `.env` supplies the MySQL/Keycloak endpoints and secrets.
    cd ../emobase-infra
    ./init.sh \
      --portal-server https://portal.example.org \
-     --keycloak-public-url https://auth.example.org/ibb/keycloak
+     --keycloak-public-url https://auth.example.org/keycloak
    docker compose up -d --wait
    cd ../emobase-portal-deploy
    ```
@@ -127,9 +128,8 @@ The migrations must run **before the portal web UI is used**. If they are
 skipped the API returns `500` because tables such as `versions` do not exist
 yet.
 
-`/ibb/blast/` may return `502` until the first release has built BLAST
-databases. The smoke test reports that as a warning; set `STRICT_BLAST=1` to
-make it fatal.
+`/blast/` may return `502` until the first release has built BLAST databases.
+The smoke test reports that as a warning; set `STRICT_BLAST=1` to make it fatal.
 
 ### Local trial (no domain)
 
@@ -146,7 +146,7 @@ cd ../emobase-portal-deploy
 
 Then continue with the pull/setup/start steps above and open
 `http://localhost:9080`. Keycloak is at
-`http://localhost:8081/ibb/keycloak/`.
+`http://localhost:8081/keycloak/`.
 
 When adding a local species site, register its origin with the local Keycloak
 (shared realm only):
@@ -215,16 +215,16 @@ local `emobase-infra` (`--infra-dir`, default sibling). See
 [`emobase-deploy/README.md`](https://github.com/EMOBase/emobase-deploy/blob/dev/README.md) and
 [deployment guide](https://github.com/EMOBase/emobase-docs/blob/main/DEPLOYMENT.md).
 
-The species nginx proxies `/ibb/blast/` to `PORTAL_INTERNAL_URL` so BLAST
-stays same-origin with the species UI. `PORTAL_INTERNAL_URL` defaults to
-`PORTAL_SERVER`, which is correct for separate servers. When both stacks share
-one Docker host, set it to an internal address such as
-`http://host.docker.internal:9080` (or another hostname reachable from the
-species stack's default Docker network); the browser-facing `PORTAL_SERVER` can
-stay `http://localhost:9080`. SSR API/Keycloak/Directus calls use the matching
-`INTERNAL_*` variables and fall back to the public URLs when those are absent.
-Keycloak is provided by the local `emobase-infra`. The portal reaches it inside
-Docker as `http://keycloak:8080/ibb/keycloak`; species stacks use the same
+The species nginx serves BLAST at `/ibb/blast/` and proxies it to the portal's
+`/blast/` so BLAST stays same-origin with the species UI.
+`PORTAL_INTERNAL_URL` defaults to `PORTAL_SERVER`, which is correct for separate
+servers. When both stacks share one Docker host, set it to an internal address
+such as `http://host.docker.internal:9080` (or another hostname reachable from
+the species stack's default Docker network); the browser-facing `PORTAL_SERVER`
+can stay `http://localhost:9080`. SSR API/Keycloak/Directus calls use the
+matching `INTERNAL_*` variables and fall back to the public URLs when those are
+absent. Keycloak is provided by the local `emobase-infra`. The portal reaches it
+inside Docker as `http://keycloak:8080/keycloak`; species stacks use the same
 server's `KEYCLOAK_PUBLIC_URL` (or a host-reachable Keycloak URL), never the
 portal origin.
 
@@ -282,7 +282,7 @@ docker compose up -d
 The SequenceServer image is published for `linux/amd64` only. On an Apple
 Silicon host Docker must therefore emulate it, and QEMU's user-mode emulation
 deadlocks during SequenceServer startup: the container never binds port 4567
-and `/ibb/blast/` returns `502` even when the databases exist.
+and `/blast/` returns `502` even when the databases exist.
 
 Enable **Settings → General → Use Virtualization framework** and **Use Rosetta
 for x86_64/amd64 emulation**, then restart Docker Desktop. Rosetta runs the
@@ -351,7 +351,7 @@ tag in `.env` and run the same commands.
   by `BLAST_CONTAINER_NAME` and must match the `blast` service.
 - BLAST databases are created by the genomics workers (`SETUP_BLAST` jobs) from
   a release and written to the `blast-data` volume. Check
-  `/ibb/blast/searchdata.json` to see what the running SequenceServer has
+  `/blast/searchdata.json` to see what the running SequenceServer has
   picked up.
 - There is no main-species setting: emobase-genomics serves every assembly in a
   release, and the legacy single-species endpoints default to Tcas internally.

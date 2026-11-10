@@ -67,15 +67,15 @@ check /admin/versions
 check /api/auth/session
 
 # Genomics API (public endpoints, no token needed)
-check "/ibb/api/genomicsservice/v1/public/versions?status=READY"
-check /ibb/api/genomicsservice/v1/docs
+check "/api/genomicsservice/v1/public/versions?status=READY"
+check /api/genomicsservice/v1/docs
 
 # Keycloak realm (its own per-server endpoint, not the portal origin)
 check "${KEYCLOAK_PUBLIC_URL}/realms/${KEYCLOAK_REALM:-ibb}"
 
 # JBrowse2 static entrypoint, and BLAST (soft until data exists)
-check /ibb/jbrowse2/ 200
-soft_check /ibb/blast/
+check /jbrowse/ 200
+soft_check /blast/
 
 if [[ "$fail" -ne 0 ]]; then
   echo
