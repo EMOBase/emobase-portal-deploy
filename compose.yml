@@ -171,12 +171,12 @@ services:
       - sh
       - -c
       - |
-        sed -i 's|redirect to("/#{job.id}")|redirect to("./#{job.id}")|g' \
+        sed -i 's|redirect to("/#{job.id}")|redirect to("/blast/#{job.id}")|g' \
           /sequenceserver/lib/sequenceserver/routes.rb
         # SequenceServer emits root-absolute asset URLs by default, which 404
-        # when it is proxied under a subpath. A relative prefix lets the same
-        # backend work under /blast/ on both the portal and species sites.
-        sed -i "s|set :asset_prefix, ''|set :asset_prefix, '.'|" \
+        # when it is proxied under a subpath. The portal and species sites both
+        # serve BLAST at /blast/.
+        sed -i "s|set :asset_prefix, ''|set :asset_prefix, '/blast'|" \
           /sequenceserver/lib/sequenceserver/routes.rb
         sequenceserver -r /opt/links_jbrowse2.rb
     environment:
