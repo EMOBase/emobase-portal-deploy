@@ -8,7 +8,7 @@
 #   ./init.sh --print > .env
 #
 # The script only writes .env. Starting the stack is documented in README.md
-# and DEPLOYMENT.md.
+# and the emobase-docs deployment guide.
 
 set -eo pipefail
 
@@ -282,4 +282,4 @@ mkdir -p data/public/emobase-genomics
 >&2 echo "  7. docker compose up -d --wait"
 >&2 echo "  8. ./scripts/smoke-test.sh"
 >&2 echo
->&2 echo "Then deploy the species site with emobase-deploy (see DEPLOYMENT.md)."
+>&2 echo "Then deploy the species site with emobase-deploy (see the emobase-docs deployment guide)."

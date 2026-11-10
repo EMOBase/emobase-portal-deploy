@@ -10,7 +10,7 @@ A deployment server needs **this repository, `emobase-infra`, Docker** and, for
 species sites, `emobase-deploy`.
 
 > **Starting from an empty server?** Follow the complete three-repository
-> runbook in [DEPLOYMENT.md](DEPLOYMENT.md). It covers infrastructure, the
+> runbook in the [deployment guide](https://github.com/EMOBase/emobase-docs/blob/main/DEPLOYMENT.md). It covers infrastructure, the
 > portal plus `emobase-deploy`, the URL hand-off between them, TLS, updates and
 > backups. The quick start below is the portal half.
 
@@ -154,7 +154,7 @@ The species checkout uses `INTERNAL_*` URLs for calls made from inside its
 containers, and `PORTAL_INTERNAL_URL` for the BLAST proxy. Therefore
 `localhost` does not have to be reachable from those containers. For the full
 local walkthrough, including the species stack, see
-[Local setup](DEPLOYMENT.md#local-setup-no-public-server).
+[Local setup](https://github.com/EMOBase/emobase-docs/blob/main/DEPLOYMENT.md#local-setup-no-public-server).
 
 ## Pairing with emobase-deploy
 
@@ -208,7 +208,7 @@ Without `--portal-dir`, `emobase-deploy/init.sh` looks for
 `--portal-server https://portal.example.org` and make the shared secrets
 available with `--infra-dir` (or copy them from `emobase-infra/.env`). See
 [`../emobase-deploy/README.md`](../emobase-deploy/README.md) and
-[DEPLOYMENT.md](DEPLOYMENT.md).
+[deployment guide](https://github.com/EMOBase/emobase-docs/blob/main/DEPLOYMENT.md).
 
 The species nginx proxies `/ibb/blast/` to `PORTAL_INTERNAL_URL` so BLAST
 stays same-origin with the species UI. `PORTAL_INTERNAL_URL` defaults to
@@ -337,7 +337,7 @@ tag in `.env` and run the same commands.
 2. Run `./scripts/smoke-test.sh` and open the portal web UI in a browser. Sign
    in, then check that `/admin/versions` loads without the `versions` 500.
 3. If `emobase-deploy` is part of the test, repeat the checks from
-   [DEPLOYMENT.md](DEPLOYMENT.md).
+   [deployment guide](https://github.com/EMOBase/emobase-docs/blob/main/DEPLOYMENT.md).
 
 ## Notes
 
