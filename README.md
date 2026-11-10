@@ -37,7 +37,7 @@ portal.
 
 The portal web UI is served at `/`. The portal uses its own paths; the
 species-native `/ibb/...` paths belong to `emobase-deploy`. BLAST is proxied at
-`/blast/` on the portal and at `/ibb/blast/` on a species site:
+`/blast/` on both the portal and species sites:
 
 | Path | Backend |
 | --- | --- |
@@ -215,7 +215,7 @@ local `emobase-infra` (`--infra-dir`, default sibling). See
 [`emobase-deploy/README.md`](https://github.com/EMOBase/emobase-deploy/blob/dev/README.md) and
 [deployment guide](https://github.com/EMOBase/emobase-docs/blob/main/DEPLOYMENT.md).
 
-The species nginx serves BLAST at `/ibb/blast/` and proxies it to the portal's
+The species nginx serves BLAST at `/blast/` and proxies it to the portal's
 `/blast/` so BLAST stays same-origin with the species UI.
 `PORTAL_INTERNAL_URL` defaults to `PORTAL_SERVER`, which is correct for separate
 servers. When both stacks share one Docker host, set it to an internal address

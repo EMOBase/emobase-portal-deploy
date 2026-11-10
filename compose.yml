@@ -175,7 +175,7 @@ services:
           /sequenceserver/lib/sequenceserver/routes.rb
         # SequenceServer emits root-absolute asset URLs by default, which 404
         # when it is proxied under a subpath. A relative prefix lets the same
-        # backend work under the portal's /blast/ and a species' /ibb/blast/.
+        # backend work under /blast/ on both the portal and species sites.
         sed -i "s|set :asset_prefix, ''|set :asset_prefix, '.'|" \
           /sequenceserver/lib/sequenceserver/routes.rb
         sequenceserver -r /opt/links_jbrowse2.rb
