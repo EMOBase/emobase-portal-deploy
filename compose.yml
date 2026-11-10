@@ -78,7 +78,7 @@ services:
       EMOBASE_GENOMICS_KEYCLOAK__URL: ${KEYCLOAK_INTERNAL_URL:-http://keycloak:8080/ibb/keycloak}
       EMOBASE_GENOMICS_KEYCLOAK__REALM: ${KEYCLOAK_REALM:-ibb}
       EMOBASE_GENOMICS_KEYCLOAK__ISSUER: ${KEYCLOAK_PUBLIC_URL}/realms/${KEYCLOAK_REALM:-ibb}
-      EMOBASE_GENOMICS_KEYCLOAK__REQUIRED_ROLE: default-roles-ibb
+      EMOBASE_GENOMICS_KEYCLOAK__REQUIRED_ROLE: default-roles-${KEYCLOAK_REALM:-ibb}
       # Must match the public path proxied by nginx; tus uses it to build the
       # Location header returned to the browser.
       EMOBASE_GENOMICS_UPLOADS__TUS_BASE_PATH: /ibb/api/genomicsservice/v1/uploads
