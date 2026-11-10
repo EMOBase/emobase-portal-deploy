@@ -118,10 +118,10 @@ running first; its `.env` supplies the MySQL/Keycloak endpoints and secrets.
    `${KEYCLOAK_PUBLIC_URL}/admin/` using the `KEYCLOAK_ADMIN` /
    `KEYCLOAK_ADMIN_PASSWORD` from `../emobase-infra/.env`.
 
-The imported realm user (`COCO_USERNAME`) has the `default-roles-ibb` role and
-can sign in to the portal and every species site. Its password is temporary;
-Keycloak asks for a new password on first login. Create more users from the
-Keycloak admin console.
+The imported realm user (`COCO_USERNAME`) has the realm's default role
+(`default-roles-<realm>`) and can sign in to the portal and every species site
+on this server. Its password is temporary; Keycloak asks for a new password on
+first login. Create more users from the Keycloak admin console.
 
 The migrations must run **before the portal web UI is used**. If they are
 skipped the API returns `500` because tables such as `versions` do not exist
