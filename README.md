@@ -108,6 +108,15 @@ running first; its `.env` supplies the MySQL/Keycloak endpoints and secrets.
    The migrations write to the local MySQL instance. They must run after
    `emobase-infra` is healthy. The JBrowse2 setup only uses the shared volume.
 
+   > **Reusing a Docker host?** Compose volume names are global to the
+   > project, not the checkout directory. If `emobase-portal_jbrowse2-data`
+   > already exists from an earlier run, `jbrowse create /web` fails because
+   > the volume is not empty. Remove that volume
+   > (`docker volume rm emobase-portal_jbrowse2-data`) or use a fresh project
+   > name consistently, for example `export COMPOSE_PROJECT_NAME=emobase-portal-test`.
+   > `docker compose --profile '*' down -v` also resets it, but destroys all
+   > portal data.
+
 4. Start the stack and verify:
 
    ```bash
