@@ -3,7 +3,7 @@
 Multi-species deployment stack: **emobase-portal-web** (Astro SSR UI) in front
 of **emobase-genomics** (API, workers, Elasticsearch, JBrowse2, BLAST).
 MySQL and Keycloak are **not** part of this stack; they run once in the shared
-[`emobase-infra`](../emobase-infra) stack and are used by the portal and every
+[`emobase-infra`](https://github.com/EMOBase/emobase-infra) stack and are used by the portal and every
 species deployment.
 
 A deployment server needs **this repository, `emobase-infra`, Docker** and, for
@@ -51,7 +51,7 @@ the `/ibb/...` paths that the web UI uses by default:
 - Docker Engine 24+ with Compose v2
 - Outbound HTTPS access to `ghcr.io`
 - A public URL (or host:port) for the portal
-- A running [`emobase-infra`](../emobase-infra) stack with its `.env`
+- A running [`emobase-infra`](https://github.com/EMOBase/emobase-infra) stack with its `.env`
 - The images are public, so no registry login is normally needed. If the
   packages are private, log in once:
 
@@ -67,7 +67,7 @@ the `/ibb/...` paths that the web UI uses by default:
 running first; its `.env` supplies `MYSQL_ROOT_PASSWORD` and
 `KEYCLOAK_CLIENT_SECRET`.
 
-0. Start [`emobase-infra`](../emobase-infra) if it is not running:
+0. Start [`emobase-infra`](https://github.com/EMOBase/emobase-infra) if it is not running:
 
    ```bash
    cd ../emobase-infra
@@ -209,7 +209,7 @@ Without `--portal-dir`, `emobase-deploy/init.sh` looks for
 `../emobase-infra/.env` as a fallback. On a separate server, pass
 `--portal-server https://portal.example.org` and make the shared secrets
 available with `--infra-dir` (or copy them from `emobase-infra/.env`). See
-[`../emobase-deploy/README.md`](../emobase-deploy/README.md) and
+[`emobase-deploy/README.md`](https://github.com/EMOBase/emobase-deploy/blob/dev/README.md) and
 [deployment guide](https://github.com/EMOBase/emobase-docs/blob/main/DEPLOYMENT.md).
 
 The species nginx proxies `/ibb/blast/` to `PORTAL_INTERNAL_URL` so BLAST
