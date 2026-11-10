@@ -29,15 +29,11 @@ species sites, `emobase-deploy`.
 | `setup-jbrowse2-web` | One-shot JBrowse2 web-root initialisation |
 | `migrate-genomics-db` / `migrate-genomics-es` | One-shot genomics migrations |
 
-MySQL and Keycloak are provided by this server's `emobase-infra` and reached
-over the shared `emobase-infra` Docker network as `mysql` and `keycloak`.
-Keycloak also has its own per-server public URL (`KEYCLOAK_PUBLIC_URL`); the
-portal does not proxy it, and species authentication does not depend on the
-portal.
+The portal connects to this server's `emobase-infra` over the shared
+`emobase-infra` Docker network using the service names `mysql` and `keycloak`.
+Keycloak is also reachable at `KEYCLOAK_PUBLIC_URL`.
 
-The portal web UI is served at `/`. The portal uses its own paths; the
-species-native `/ibb/...` paths belong to `emobase-deploy`. BLAST is proxied at
-`/blast/` on both the portal and species sites:
+The portal serves:
 
 | Path | Backend |
 | --- | --- |
@@ -139,16 +135,11 @@ the species stack, see
 
 ## Species sites
 
-[`emobase-deploy`](https://github.com/EMOBase/emobase-deploy/tree/dev) consumes
-this portal for genomics, JBrowse2 and BLAST. Deploy the local
-`emobase-infra` and the portal first. The species stack sets `PORTAL_SERVER` to
-this portal's `PUBLIC_SERVER` and `PORTAL_INTERNAL_URL` to an address its
-containers can reach.
-
-The complete three-repository order, URL hand-off and Keycloak realm choice are
-in the [deployment guide](https://github.com/EMOBase/emobase-docs/blob/main/DEPLOYMENT.md).
-See [`emobase-deploy/README.md`](https://github.com/EMOBase/emobase-deploy/blob/dev/README.md)
-for the species-specific settings.
+Species deployments consume this portal for genomics, JBrowse2 and BLAST. The
+full order is in the
+[deployment guide](https://github.com/EMOBase/emobase-docs/blob/main/DEPLOYMENT.md);
+species-specific settings are in the
+[`emobase-deploy` README](https://github.com/EMOBase/emobase-deploy/blob/dev/README.md).
 
 ## Images
 
