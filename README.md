@@ -9,11 +9,6 @@ species deployment.
 A deployment server needs **this repository, `emobase-infra`, Docker** and, for
 species sites, `emobase-deploy`.
 
-> **Upgrading an existing deployment?** MySQL and Keycloak moved out of this
-> stack into `emobase-infra`. Create and start `emobase-infra` first, then
-> regenerate this stack's `.env` with `./init.sh -f` so it reads the shared
-> secrets. The old `mysql-data` volume is no longer used.
-
 > **Starting from an empty server?** Follow the complete three-repository
 > runbook in [DEPLOYMENT.md](DEPLOYMENT.md). It covers infrastructure, the
 > portal plus `emobase-deploy`, the URL hand-off between them, TLS, updates and
