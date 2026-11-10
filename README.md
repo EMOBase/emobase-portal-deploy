@@ -80,11 +80,12 @@ running first; its `.env` supplies `MYSQL_ROOT_PASSWORD` and
    ./init.sh --public-server https://portal.example.org --http-port 9080
    ```
 
-   The script reads the shared MySQL/Keycloak secrets from
+   The script reads the shared MySQL/Keycloak secrets, realm and client ID from
    `../emobase-infra/.env` automatically (use `--infra-dir` when it is
-   elsewhere). It asks for missing values and generates the remaining secrets.
-   Review `.env` before continuing, especially the image tags. For a local
-   test, leave the defaults: `./init.sh --yes`.
+   elsewhere). The portal always uses the shared realm. It asks for missing
+   values and generates the remaining secrets. Review `.env` before continuing,
+   especially the image tags. For a local test, leave the defaults:
+   `./init.sh --yes`.
 
 2. Pull images (including the one-shot setup/update services):
 
@@ -166,11 +167,13 @@ optional internal URLs:
 | Where | Variable | Value |
 | --- | --- | --- |
 | Infra `.env` | `PORTAL_PUBLIC_SERVER` | **The portal's public URL** |
+| Infra `.env` | `KEYCLOAK_REALM` / `KEYCLOAK_CLIENT_ID` | The portal's shared realm/client |
 | Portal `.env` | `PUBLIC_SERVER` | The same portal URL |
 | Species `.env` | `PORTAL_SERVER` | The same portal URL |
 | Species `.env` | `PORTAL_INTERNAL_URL` | Portal origin used by nginx for BLAST |
 | Species `.env` | `INTERNAL_*` | Server-side service URLs, if different from public |
 | Species `.env` | `PUBLIC_SERVER` | The species site's own public URL |
+| Species `.env` | `KEYCLOAK_REALM` | Shared realm, or a dedicated realm (`ibb_<species>`) |
 | Species `.env` | `DIRECTUS_DB_DATABASE` | One database per species (e.g. `directus_tcas`) |
 
 With all three repositories cloned into the same parent directory, the species
@@ -186,12 +189,18 @@ cd ../emobase-deploy
 # Create this species' Directus database in the shared MySQL.
 ../emobase-infra/scripts/create-database.sh directus_tcas
 
-# Allow this species origin to sign in through the shared Keycloak.
+# Only when this species reuses the portal's shared Keycloak realm.
+# A dedicated realm is created by init.sh during the previous step.
 ../emobase-infra/scripts/allow-origin.sh https://tcas.example.org
 
 docker compose run --rm setup-directus
 docker compose up -d --wait
 ```
+
+`emobase-deploy/init.sh` prompts whether the species should reuse the portal's
+shared realm or create a dedicated realm. Use a shared realm when one team
+manages every site; use a dedicated realm when each site has its own users and
+administrators.
 
 Without `--portal-dir`, `emobase-deploy/init.sh` looks for
 `../emobase-portal-deploy/.env` and uses `PORTAL_PUBLIC_SERVER` from

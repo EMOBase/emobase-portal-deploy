@@ -66,7 +66,7 @@ check "/ibb/api/genomicsservice/v1/public/versions?status=READY"
 check /ibb/api/genomicsservice/v1/docs
 
 # Keycloak realm
-check /ibb/keycloak/realms/ibb
+check "/ibb/keycloak/realms/${KEYCLOAK_REALM:-ibb}"
 
 # JBrowse2 static entrypoint, and BLAST (soft until data exists)
 check /ibb/jbrowse2/ 200

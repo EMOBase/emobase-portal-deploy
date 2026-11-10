@@ -34,24 +34,24 @@ fatal() {
 generate_secret_key() {
   length="${1:-32}"
   local key # Needed to avoid pipefail
-  key=$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c "$length")
+  key=$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c "$length" || true)
   echo "$key"
 }
 
 generate_password() {
   length="${1:-$PASSWORD_LENGTH}"
 
-  upper=$(LC_ALL=C tr -dc 'A-Z' </dev/urandom | head -c1)
-  lower=$(LC_ALL=C tr -dc 'a-z' </dev/urandom | head -c1)
-  digit=$(LC_ALL=C tr -dc '0-9' </dev/urandom | head -c1)
+  upper=$(LC_ALL=C tr -dc 'A-Z' </dev/urandom | head -c1 || true)
+  lower=$(LC_ALL=C tr -dc 'a-z' </dev/urandom | head -c1 || true)
+  digit=$(LC_ALL=C tr -dc '0-9' </dev/urandom | head -c1 || true)
   # "+" is deliberately excluded: emobase-genomics builds the db:migrate DSN
   # in MySQLMigrateDSN, and golang-migrate's MySQL driver url.QueryUnescape()s
   # that password, turning "+" into a space. The API/workers use a different
   # DSN builder and connect fine, but db:migrate fails with "Access denied".
-  symbol=$(LC_ALL=C tr -dc '_-=' </dev/urandom | head -c1)
+  symbol=$(LC_ALL=C tr -dc '_-=' </dev/urandom | head -c1 || true)
 
   rest_length=$((length - 4))
-  rest=$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c "$rest_length")
+  rest=$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c "$rest_length" || true)
 
   # Shuffle safely using awk (portable)
   printf "%s\n" "$upper$lower$digit$symbol$rest" | \
@@ -183,6 +183,11 @@ KEYCLOAK_CLIENT_SECRET=$(read_env_value "$INFRA_DIR/.env" KEYCLOAK_CLIENT_SECRET
 [[ -n "$KEYCLOAK_CLIENT_SECRET" ]] \
   || fatal "${INFRA_DIR}/.env has no KEYCLOAK_CLIENT_SECRET; re-run emobase-infra/init.sh."
 
+KEYCLOAK_REALM=$(read_env_value "$INFRA_DIR/.env" KEYCLOAK_REALM || true)
+KEYCLOAK_REALM="${KEYCLOAK_REALM:-ibb}"
+KEYCLOAK_CLIENT_ID=$(read_env_value "$INFRA_DIR/.env" KEYCLOAK_CLIENT_ID || true)
+KEYCLOAK_CLIENT_ID="${KEYCLOAK_CLIENT_ID:-ibb-client}"
+
 INFRA_NETWORK=$(read_env_value "$INFRA_DIR/.env" EMOBASE_INFRA_NETWORK || true)
 INFRA_NETWORK="${INFRA_NETWORK:-$DEFAULT_INFRA_NETWORK}"
 
@@ -215,6 +220,11 @@ EMOBASE_GENOMICS_MYSQL__HOST=mysql
 EMOBASE_GENOMICS_MYSQL__PORT=3306
 EMOBASE_GENOMICS_MYSQL__USER=root
 EMOBASE_GENOMICS_MYSQL__DATABASE=emobase_genomics
+
+# Shared Keycloak realm/client. The portal always uses the realm from
+# emobase-infra; species deployments may create dedicated realms.
+KEYCLOAK_REALM=${KEYCLOAK_REALM}
+KEYCLOAK_CLIENT_ID=${KEYCLOAK_CLIENT_ID}
 
 # ── EMOBase Genomics ────────────────────────────────────────────────────────
 EMOBASE_GENOMICS_ELASTICSEARCH__INDEX_PREFIX=genomics
