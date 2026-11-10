@@ -10,9 +10,11 @@ A deployment server needs **this repository, `emobase-infra`, Docker** and, for
 species sites, `emobase-deploy`.
 
 > **Starting from an empty server?** Follow the complete three-repository
-> runbook in the [deployment guide](https://github.com/EMOBase/emobase-docs/blob/main/DEPLOYMENT.md). It covers infrastructure, the
-> portal plus `emobase-deploy`, the URL hand-off between them, TLS, updates and
-> backups. The quick start below is the portal half.
+> runbook in the
+> [deployment guide](https://github.com/EMOBase/emobase-docs/blob/main/DEPLOYMENT.md).
+> It covers infrastructure, the portal plus `emobase-deploy`, the URL hand-off
+> between them, TLS, updates and backups. The quick start below is the portal
+> half.
 
 ## Services
 
