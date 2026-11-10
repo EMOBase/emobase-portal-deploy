@@ -211,7 +211,7 @@ automatically:
 mkdir -p ~/emobase && cd ~/emobase
 git clone https://github.com/EMOBase/emobase-infra.git
 git clone https://github.com/EMOBase/emobase-portal-deploy.git
-git clone https://github.com/EMOBase/emobase-deploy.git
+git clone -b dev https://github.com/EMOBase/emobase-deploy.git
 ```
 
 SSH clone URLs work too:
@@ -219,8 +219,11 @@ SSH clone URLs work too:
 ```bash
 git clone git@github.com:EMOBase/emobase-infra.git
 git clone git@github.com:EMOBase/emobase-portal-deploy.git
-git clone git@github.com:EMOBase/emobase-deploy.git
+git clone -b dev git@github.com:EMOBase/emobase-deploy.git
 ```
+
+The species deployment changes are on its `dev` branch; portal and infra use
+`main`.
 
 The images are public, so no registry login is normally needed. If a package
 is private, log in once with a token that has `read:packages`:
