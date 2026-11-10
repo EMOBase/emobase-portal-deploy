@@ -187,6 +187,16 @@ KEYCLOAK_REALM=$(read_env_value "$INFRA_DIR/.env" KEYCLOAK_REALM || true)
 KEYCLOAK_REALM="${KEYCLOAK_REALM:-ibb}"
 KEYCLOAK_CLIENT_ID=$(read_env_value "$INFRA_DIR/.env" KEYCLOAK_CLIENT_ID || true)
 KEYCLOAK_CLIENT_ID="${KEYCLOAK_CLIENT_ID:-ibb-client}"
+KEYCLOAK_PUBLIC_URL=$(read_env_value "$INFRA_DIR/.env" KEYCLOAK_PUBLIC_URL || true)
+KEYCLOAK_PUBLIC_URL="${KEYCLOAK_PUBLIC_URL:-http://localhost:8081/ibb/keycloak}"
+KEYCLOAK_INTERNAL_URL=$(read_env_value "$INFRA_DIR/.env" KEYCLOAK_INTERNAL_URL || true)
+KEYCLOAK_INTERNAL_URL="${KEYCLOAK_INTERNAL_URL:-http://keycloak:8080/ibb/keycloak}"
+
+if [[ "$KEYCLOAK_PUBLIC_URL" == *localhost* || "$KEYCLOAK_PUBLIC_URL" == *127.0.0.1* ]] \
+  && [[ "$PUBLIC_SERVER" != *localhost* && "$PUBLIC_SERVER" != *127.0.0.1* ]]; then
+  >&2 echo "⚠️  KEYCLOAK_PUBLIC_URL points at localhost but PUBLIC_SERVER does not."
+  >&2 echo "   Set --keycloak-public-url in emobase-infra/init.sh."
+fi
 
 INFRA_NETWORK=$(read_env_value "$INFRA_DIR/.env" EMOBASE_INFRA_NETWORK || true)
 INFRA_NETWORK="${INFRA_NETWORK:-$DEFAULT_INFRA_NETWORK}"
@@ -221,8 +231,10 @@ EMOBASE_GENOMICS_MYSQL__PORT=3306
 EMOBASE_GENOMICS_MYSQL__USER=root
 EMOBASE_GENOMICS_MYSQL__DATABASE=emobase_genomics
 
-# Shared Keycloak realm/client. The portal always uses the realm from
+# Keycloak endpoint/realm/client. The portal always uses the realm from
 # emobase-infra; species deployments may create dedicated realms.
+KEYCLOAK_PUBLIC_URL=${KEYCLOAK_PUBLIC_URL}
+KEYCLOAK_INTERNAL_URL=${KEYCLOAK_INTERNAL_URL}
 KEYCLOAK_REALM=${KEYCLOAK_REALM}
 KEYCLOAK_CLIENT_ID=${KEYCLOAK_CLIENT_ID}
 

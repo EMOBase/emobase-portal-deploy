@@ -49,10 +49,10 @@ services:
       PUBLIC_UI_PAGE_BLAST: /ibb/blast/
       PUBLIC_UI_PAGE_API_DOC: /ibb/api/genomicsservice/v1/docs
       INTERNAL_API_GENOMICS_SERVICE: ${INTERNAL_API_GENOMICS_SERVICE:-http://genomicsservice:8080}
-      INTERNAL_KEYCLOAK_ISSUER: ${INTERNAL_KEYCLOAK_ISSUER:-http://keycloak:8080/ibb/keycloak/realms/${KEYCLOAK_REALM:-ibb}}
+      INTERNAL_KEYCLOAK_ISSUER: ${KEYCLOAK_INTERNAL_URL}/realms/${KEYCLOAK_REALM:-ibb}
       AUTH_SECRET: ${AUTH_SECRET}
       AUTH_TRUST_HOST: "true"
-      KEYCLOAK_ISSUER: /ibb/keycloak/realms/${KEYCLOAK_REALM:-ibb}
+      KEYCLOAK_ISSUER: ${KEYCLOAK_PUBLIC_URL}/realms/${KEYCLOAK_REALM:-ibb}
       KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-ibb-client}
       KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
     depends_on:
@@ -75,9 +75,9 @@ services:
     command: ["api", "-c", "/app/config.yaml"]
     environment:
       <<: *genomics-environment
-      EMOBASE_GENOMICS_KEYCLOAK__URL: ${EMOBASE_GENOMICS_KEYCLOAK__URL:-http://keycloak:8080/ibb/keycloak}
+      EMOBASE_GENOMICS_KEYCLOAK__URL: ${KEYCLOAK_INTERNAL_URL:-http://keycloak:8080/ibb/keycloak}
       EMOBASE_GENOMICS_KEYCLOAK__REALM: ${KEYCLOAK_REALM:-ibb}
-      EMOBASE_GENOMICS_KEYCLOAK__ISSUER: ${PUBLIC_SERVER}/ibb/keycloak/realms/${KEYCLOAK_REALM:-ibb}
+      EMOBASE_GENOMICS_KEYCLOAK__ISSUER: ${KEYCLOAK_PUBLIC_URL}/realms/${KEYCLOAK_REALM:-ibb}
       EMOBASE_GENOMICS_KEYCLOAK__REQUIRED_ROLE: default-roles-ibb
       # Must match the public path proxied by nginx; tus uses it to build the
       # Location header returned to the browser.
@@ -154,9 +154,6 @@ services:
         condition: service_healthy
       blast:
         condition: service_started
-    networks:
-      - default
-      - emobase-infra
 
   # ── BLAST (SequenceServer) ───────────────────────────────────────────────
   blast:

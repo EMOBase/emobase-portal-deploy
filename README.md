@@ -2,9 +2,9 @@
 
 Multi-species deployment stack: **emobase-portal-web** (Astro SSR UI) in front
 of **emobase-genomics** (API, workers, Elasticsearch, JBrowse2, BLAST).
-MySQL and Keycloak are **not** part of this stack; they run once in the shared
-[`emobase-infra`](https://github.com/EMOBase/emobase-infra) stack and are used by the portal and every
-species deployment.
+MySQL and Keycloak are **not** part of this stack; they run once per server in
+[`emobase-infra`](https://github.com/EMOBase/emobase-infra) and are used by the
+portal and every species deployment on that server.
 
 A deployment server needs **this repository, `emobase-infra`, Docker** and, for
 species sites, `emobase-deploy`.
@@ -29,20 +29,20 @@ species sites, `emobase-deploy`.
 | `setup-jbrowse2-web` | One-shot JBrowse2 web-root initialisation |
 | `migrate-genomics-db` / `migrate-genomics-es` | One-shot genomics migrations |
 
-MySQL and Keycloak are provided by `emobase-infra` and reached over the shared
-`emobase-infra` Docker network as `mysql` and `keycloak`. Keycloak is still
-served to browsers at `<PUBLIC_SERVER>/ibb/keycloak/`, proxied by this stack's
-nginx.
+MySQL and Keycloak are provided by this server's `emobase-infra` and reached
+over the shared `emobase-infra` Docker network as `mysql` and `keycloak`.
+Keycloak also has its own per-server public URL (`KEYCLOAK_PUBLIC_URL`); the
+portal does not proxy it, and species authentication does not depend on the
+portal.
 
-The portal web UI is served at `/`. Genomics, Keycloak, BLAST and JBrowse2 keep
-the `/ibb/...` paths that the web UI uses by default:
+The portal web UI is served at `/`. Genomics, BLAST and JBrowse2 keep the
+`/ibb/...` paths that the web UI uses by default:
 
 | Path | Backend |
 | --- | --- |
 | `/` | `fe:8080` |
 | `/download/` | `${PUBLIC_DATA_DIR}` on the host |
 | `/ibb/api/genomicsservice/v1/` | `genomicsservice:8080` |
-| `/ibb/keycloak/` | `keycloak:8080` |
 | `/ibb/jbrowse2/` | JBrowse2 data volume |
 | `/ibb/blast/` | `blast:4567` |
 
@@ -63,15 +63,16 @@ the `/ibb/...` paths that the web UI uses by default:
 
 ## Quick start (portal)
 
-`compose.yml` contains no `build:` sections. The shared infrastructure must be
-running first; its `.env` supplies `MYSQL_ROOT_PASSWORD` and
-`KEYCLOAK_CLIENT_SECRET`.
+`compose.yml` contains no `build:` sections. The local infrastructure must be
+running first; its `.env` supplies the MySQL/Keycloak endpoints and secrets.
 
 0. Start [`emobase-infra`](https://github.com/EMOBase/emobase-infra) if it is not running:
 
    ```bash
    cd ../emobase-infra
-   ./init.sh --portal-server https://portal.example.org
+   ./init.sh \
+     --portal-server https://portal.example.org \
+     --keycloak-public-url https://auth.example.org/ibb/keycloak
    docker compose up -d --wait
    cd ../emobase-portal-deploy
    ```
@@ -82,8 +83,8 @@ running first; its `.env` supplies `MYSQL_ROOT_PASSWORD` and
    ./init.sh --public-server https://portal.example.org --http-port 9080
    ```
 
-   The script reads the shared MySQL/Keycloak secrets, realm and client ID from
-   `../emobase-infra/.env` automatically (use `--infra-dir` when it is
+   The script reads the MySQL/Keycloak secrets, endpoints, realm and client ID
+   from `../emobase-infra/.env` automatically (use `--infra-dir` when it is
    elsewhere). The portal always uses the shared realm. It asks for missing
    values and generates the remaining secrets. Review `.env` before continuing,
    especially the image tags. For a local test, leave the defaults:
@@ -103,7 +104,7 @@ running first; its `.env` supplies `MYSQL_ROOT_PASSWORD` and
    docker compose --profile update run --rm migrate-genomics-es
    ```
 
-   The migrations write to the shared MySQL instance. They must run after
+   The migrations write to the local MySQL instance. They must run after
    `emobase-infra` is healthy. The JBrowse2 setup only uses the shared volume.
 
 4. Start the stack and verify:
@@ -114,7 +115,7 @@ running first; its `.env` supplies `MYSQL_ROOT_PASSWORD` and
    ```
 
 5. Open `${PUBLIC_SERVER}`. Keycloak admin is at
-   `${PUBLIC_SERVER}/ibb/keycloak/admin/` using the `KEYCLOAK_ADMIN` /
+   `${KEYCLOAK_PUBLIC_URL}/admin/` using the `KEYCLOAK_ADMIN` /
    `KEYCLOAK_ADMIN_PASSWORD` from `../emobase-infra/.env`.
 
 The imported realm user (`COCO_USERNAME`) has the `default-roles-ibb` role and
@@ -144,9 +145,11 @@ cd ../emobase-portal-deploy
 ```
 
 Then continue with the pull/setup/start steps above and open
-`http://localhost:9080`.
+`http://localhost:9080`. Keycloak is at
+`http://localhost:8081/ibb/keycloak/`.
 
-When adding a local species site, register its origin with the shared Keycloak:
+When adding a local species site, register its origin with the local Keycloak
+(shared realm only):
 
 ```bash
 cd ../emobase-infra && ./scripts/allow-origin.sh http://localhost:9090
@@ -163,12 +166,13 @@ local walkthrough, including the species stack, see
 `emobase-deploy` runs the single-species UI and consumes this portal for
 genomics, JBrowse2 and BLAST. Deploy `emobase-infra` and the portal first.
 
-The hand-off is the portal URL, the shared infrastructure values and a few
+The hand-off is the portal URL, the local infrastructure values and a few
 optional internal URLs:
 
 | Where | Variable | Value |
 | --- | --- | --- |
 | Infra `.env` | `PORTAL_PUBLIC_SERVER` | **The portal's public URL** |
+| Infra `.env` | `KEYCLOAK_PUBLIC_URL` / `KEYCLOAK_INTERNAL_URL` | The local Keycloak endpoints |
 | Infra `.env` | `KEYCLOAK_REALM` / `KEYCLOAK_CLIENT_ID` | The portal's shared realm/client |
 | Portal `.env` | `PUBLIC_SERVER` | The same portal URL |
 | Species `.env` | `PORTAL_SERVER` | The same portal URL |
@@ -188,7 +192,7 @@ cd ../emobase-deploy
   --public-server https://tcas.example.org \
   --portal-dir ../emobase-portal-deploy
 
-# Create this species' Directus database in the shared MySQL.
+# Create this species' Directus database in the local MySQL.
 ../emobase-infra/scripts/create-database.sh directus_tcas
 
 # Only when this species reuses the portal's shared Keycloak realm.
@@ -205,10 +209,9 @@ manages every site; use a dedicated realm when each site has its own users and
 administrators.
 
 Without `--portal-dir`, `emobase-deploy/init.sh` looks for
-`../emobase-portal-deploy/.env` and uses `PORTAL_PUBLIC_SERVER` from
-`../emobase-infra/.env` as a fallback. On a separate server, pass
-`--portal-server https://portal.example.org` and make the shared secrets
-available with `--infra-dir` (or copy them from `emobase-infra/.env`). See
+`../emobase-portal-deploy/.env`. On a server without a portal checkout, pass
+`--portal-server https://portal.example.org`; the species stack still uses the
+local `emobase-infra` (`--infra-dir`, default sibling). See
 [`emobase-deploy/README.md`](https://github.com/EMOBase/emobase-deploy/blob/dev/README.md) and
 [deployment guide](https://github.com/EMOBase/emobase-docs/blob/main/DEPLOYMENT.md).
 
@@ -220,10 +223,10 @@ one Docker host, set it to an internal address such as
 species stack's default Docker network); the browser-facing `PORTAL_SERVER` can
 stay `http://localhost:9080`. SSR API/Keycloak/Directus calls use the matching
 `INTERNAL_*` variables and fall back to the public URLs when those are absent.
-Keycloak itself is shared. The portal reaches it inside Docker as
-`http://keycloak:8080/ibb/keycloak`; species stacks use the portal origin
-(`INTERNAL_KEYCLOAK_ISSUER`) so their containers do not join the shared
-infra network and collide with other species' service names.
+Keycloak is provided by the local `emobase-infra`. The portal reaches it inside
+Docker as `http://keycloak:8080/ibb/keycloak`; species stacks use the same
+server's `KEYCLOAK_PUBLIC_URL` (or a host-reachable Keycloak URL), never the
+portal origin.
 
 ## Images
 
@@ -247,7 +250,7 @@ Package settings → Change visibility → Public** once per package.
 ## Local development
 
 Start `emobase-infra` first so the external `emobase-infra` Docker network and
-the shared MySQL/Keycloak containers exist. Then build from the sibling source
+the local MySQL/Keycloak containers exist. Then build from the sibling source
 trees instead of pulling images:
 
 ```bash
@@ -356,11 +359,10 @@ tag in `.env` and run the same commands.
   this portal, so a single-species client may list versions from other species
   until species filtering is added to the endpoint.
 - To reset the portal containers and volumes (destroys portal data, but not
-  the shared MySQL/Keycloak):
+  the local MySQL/Keycloak):
 
   ```bash
   docker compose --profile '*' down -v
   ```
 
-  The shared databases are reset separately in `emobase-infra`; see its
-  README.
+  The local databases are reset separately in `emobase-infra`; see its README.

@@ -5,7 +5,7 @@
 #   ./scripts/smoke-test.sh
 #   PUBLIC_SERVER=https://emobase.example.org ./scripts/smoke-test.sh
 #
-# Reads PUBLIC_SERVER/HTTP_PORT from .env when present.
+# Reads PUBLIC_SERVER/HTTP_PORT/KEYCLOAK_PUBLIC_URL from .env when present.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -26,12 +26,17 @@ trap 'rm -f "$tmp"' EXIT
 fail=0
 
 check() {
-  local path="$1" expected="${2:-200}" code
-  code="$(curl -sS -o "$tmp" -w '%{http_code}' --max-time 20 "$BASE$path" || true)"
-  if [[ "$code" == "$expected" ]]; then
-    printf 'ok   %-3s %s\n' "$code" "$path"
+  local path="$1" expected="${2:-200}" code url
+  if [[ "$path" == http* ]]; then
+    url="$path"
   else
-    printf 'FAIL %-3s %s (expected %s)\n' "$code" "$path" "$expected"
+    url="$BASE$path"
+  fi
+  code="$(curl -sS -o "$tmp" -w '%{http_code}' --max-time 20 "$url" || true)"
+  if [[ "$code" == "$expected" ]]; then
+    printf 'ok   %-3s %s\n' "$code" "$url"
+  else
+    printf 'FAIL %-3s %s (expected %s)\n' "$code" "$url" "$expected"
     head -c 300 "$tmp" 2>/dev/null || true
     printf '\n'
     fail=1
@@ -65,8 +70,8 @@ check /api/auth/session
 check "/ibb/api/genomicsservice/v1/public/versions?status=READY"
 check /ibb/api/genomicsservice/v1/docs
 
-# Keycloak realm
-check "/ibb/keycloak/realms/${KEYCLOAK_REALM:-ibb}"
+# Keycloak realm (its own per-server endpoint, not the portal origin)
+check "${KEYCLOAK_PUBLIC_URL}/realms/${KEYCLOAK_REALM:-ibb}"
 
 # JBrowse2 static entrypoint, and BLAST (soft until data exists)
 check /ibb/jbrowse2/ 200
