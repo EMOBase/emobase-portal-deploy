@@ -1,15 +1,23 @@
 # EMOBase Portal deployment
 
 Multi-species deployment stack: **emobase-portal-web** (Astro SSR UI) in front
-of **emobase-genomics** (API, workers, MySQL, Elasticsearch, JBrowse2, BLAST)
-and Keycloak for authentication.
+of **emobase-genomics** (API, workers, Elasticsearch, JBrowse2, BLAST).
+MySQL and Keycloak are **not** part of this stack; they run once in the shared
+[`emobase-infra`](../emobase-infra) stack and are used by the portal and every
+species deployment.
 
-A deployment server only needs **this repository plus Docker**.
+A deployment server needs **this repository, `emobase-infra`, Docker** and, for
+species sites, `emobase-deploy`.
 
-> **Starting from an empty server?** Follow the complete two-repository
-> runbook in [DEPLOYMENT.md](DEPLOYMENT.md). It covers the portal plus
-> `emobase-deploy`, the URL hand-off between them, TLS, updates and backups.
-> The quick start below is the portal half.
+> **Upgrading an existing deployment?** MySQL and Keycloak moved out of this
+> stack into `emobase-infra`. Create and start `emobase-infra` first, then
+> regenerate this stack's `.env` with `./init.sh -f` so it reads the shared
+> secrets. The old `mysql-data` volume is no longer used.
+
+> **Starting from an empty server?** Follow the complete three-repository
+> runbook in [DEPLOYMENT.md](DEPLOYMENT.md). It covers infrastructure, the
+> portal plus `emobase-deploy`, the URL hand-off between them, TLS, updates and
+> backups. The quick start below is the portal half.
 
 ## Services
 
@@ -19,12 +27,15 @@ A deployment server only needs **this repository plus Docker**.
 | `genomicsservice` | Genomics API (`ghcr.io/emobase/emobase-genomics`) |
 | `genomicsworker-1/2` | Async upload/JBrowse2/BLAST jobs |
 | `nginx` | Public entrypoint and reverse proxy |
-| `keycloak` | OIDC provider (`ibb` realm, `ibb-client`) |
-| `mysql` | Genomics + Keycloak database |
 | `es` | Elasticsearch for search indices |
 | `blast` | SequenceServer BLAST UI |
 | `setup-jbrowse2-web` | One-shot JBrowse2 web-root initialisation |
 | `migrate-genomics-db` / `migrate-genomics-es` | One-shot genomics migrations |
+
+MySQL and Keycloak are provided by `emobase-infra` and reached over the shared
+`emobase-infra` Docker network as `mysql` and `keycloak`. Keycloak is still
+served to browsers at `<PUBLIC_SERVER>/ibb/keycloak/`, proxied by this stack's
+nginx.
 
 The portal web UI is served at `/`. Genomics, Keycloak, BLAST and JBrowse2 keep
 the `/ibb/...` paths that the web UI uses by default:
@@ -43,6 +54,7 @@ the `/ibb/...` paths that the web UI uses by default:
 - Docker Engine 24+ with Compose v2
 - Outbound HTTPS access to `ghcr.io`
 - A public URL (or host:port) for the portal
+- A running [`emobase-infra`](../emobase-infra) stack with its `.env`
 - The images are public, so no registry login is normally needed. If the
   packages are private, log in once:
 
@@ -54,7 +66,18 @@ the `/ibb/...` paths that the web UI uses by default:
 
 ## Quick start (portal)
 
-`compose.yml` contains no `build:` sections.
+`compose.yml` contains no `build:` sections. The shared infrastructure must be
+running first; its `.env` supplies `MYSQL_ROOT_PASSWORD` and
+`KEYCLOAK_CLIENT_SECRET`.
+
+0. Start [`emobase-infra`](../emobase-infra) if it is not running:
+
+   ```bash
+   cd ../emobase-infra
+   ./init.sh --portal-server https://portal.example.org
+   docker compose up -d --wait
+   cd ../emobase-portal-deploy
+   ```
 
 1. Generate `.env`:
 
@@ -62,9 +85,11 @@ the `/ibb/...` paths that the web UI uses by default:
    ./init.sh --public-server https://portal.example.org --http-port 9080
    ```
 
-   The script asks for missing values and generates all secrets. Review `.env`
-   before continuing, especially the image tags. For a local test, leave the
-   defaults: `./init.sh --yes`.
+   The script reads the shared MySQL/Keycloak secrets from
+   `../emobase-infra/.env` automatically (use `--infra-dir` when it is
+   elsewhere). It asks for missing values and generates the remaining secrets.
+   Review `.env` before continuing, especially the image tags. For a local
+   test, leave the defaults: `./init.sh --yes`.
 
 2. Pull images (including the one-shot setup/update services):
 
@@ -80,8 +105,8 @@ the `/ibb/...` paths that the web UI uses by default:
    docker compose --profile update run --rm migrate-genomics-es
    ```
 
-   The migration commands start their dependency (`mysql` or `es`), wait until
-   it is healthy, then exit. The JBrowse2 setup only uses the shared volume.
+   The migrations write to the shared MySQL instance. They must run after
+   `emobase-infra` is healthy. The JBrowse2 setup only uses the shared volume.
 
 4. Start the stack and verify:
 
@@ -91,13 +116,13 @@ the `/ibb/...` paths that the web UI uses by default:
    ```
 
 5. Open `${PUBLIC_SERVER}`. Keycloak admin is at
-   `${PUBLIC_SERVER}/ibb/keycloak/admin/` using `KEYCLOAK_ADMIN` /
-   `KEYCLOAK_ADMIN_PASSWORD`.
+   `${PUBLIC_SERVER}/ibb/keycloak/admin/` using the `KEYCLOAK_ADMIN` /
+   `KEYCLOAK_ADMIN_PASSWORD` from `../emobase-infra/.env`.
 
 The imported realm user (`COCO_USERNAME`) has the `default-roles-ibb` role and
-can sign in to the portal web UI. Its password is temporary; Keycloak asks for
-a new password on first login. Create more users from the Keycloak admin
-console.
+can sign in to the portal and every species site. Its password is temporary;
+Keycloak asks for a new password on first login. Create more users from the
+Keycloak admin console.
 
 The migrations must run **before the portal web UI is used**. If they are
 skipped the API returns `500` because tables such as `versions` do not exist
@@ -109,14 +134,25 @@ make it fatal.
 
 ### Local trial (no domain)
 
-Without DNS or TLS, use `localhost` for the browser URLs:
+Without DNS or TLS, use `localhost` for the browser URLs. Start the shared
+infrastructure first:
 
 ```bash
+cd ../emobase-infra
+./init.sh --local
+docker compose up -d --wait
+cd ../emobase-portal-deploy
 ./init.sh --local
 ```
 
 Then continue with the pull/setup/start steps above and open
 `http://localhost:9080`.
+
+When adding a local species site, register its origin with the shared Keycloak:
+
+```bash
+cd ../emobase-infra && ./scripts/allow-origin.sh http://localhost:9090
+```
 
 The species checkout uses `INTERNAL_*` URLs for calls made from inside its
 containers, and `PORTAL_INTERNAL_URL` for the BLAST proxy. Therefore
@@ -127,20 +163,23 @@ local walkthrough, including the species stack, see
 ## Pairing with emobase-deploy
 
 `emobase-deploy` runs the single-species UI and consumes this portal for
-genomics, JBrowse2 and BLAST. Deploy the portal first.
+genomics, JBrowse2 and BLAST. Deploy `emobase-infra` and the portal first.
 
-The hand-off is one public value, plus the optional internal URLs:
+The hand-off is the portal URL, the shared infrastructure values and a few
+optional internal URLs:
 
 | Where | Variable | Value |
 | --- | --- | --- |
-| Portal `.env` | `PUBLIC_SERVER` | The portal's public URL |
-| Species `.env` | `PORTAL_SERVER` | **The same portal URL** |
+| Infra `.env` | `PORTAL_PUBLIC_SERVER` | **The portal's public URL** |
+| Portal `.env` | `PUBLIC_SERVER` | The same portal URL |
+| Species `.env` | `PORTAL_SERVER` | The same portal URL |
 | Species `.env` | `PORTAL_INTERNAL_URL` | Portal origin used by nginx for BLAST |
 | Species `.env` | `INTERNAL_*` | Server-side service URLs, if different from public |
 | Species `.env` | `PUBLIC_SERVER` | The species site's own public URL |
+| Species `.env` | `DIRECTUS_DB_DATABASE` | One database per species (e.g. `directus_tcas`) |
 
-With both repositories cloned into the same parent directory, the species
-initialiser copies the value automatically:
+With all three repositories cloned into the same parent directory, the species
+initialiser copies the shared secrets and portal URL automatically:
 
 ```bash
 cd ../emobase-deploy
@@ -148,13 +187,22 @@ cd ../emobase-deploy
   --species Tcas \
   --public-server https://tcas.example.org \
   --portal-dir ../emobase-portal-deploy
+
+# Create this species' Directus database in the shared MySQL.
+../emobase-infra/scripts/create-database.sh directus_tcas
+
+# Allow this species origin to sign in through the shared Keycloak.
+../emobase-infra/scripts/allow-origin.sh https://tcas.example.org
+
 docker compose run --rm setup-directus
 docker compose up -d --wait
 ```
 
 Without `--portal-dir`, `emobase-deploy/init.sh` looks for
-`../emobase-portal-deploy/.env` automatically. On a separate server, pass
-`--portal-server https://portal.example.org` instead. See
+`../emobase-portal-deploy/.env` and uses `PORTAL_PUBLIC_SERVER` from
+`../emobase-infra/.env` as a fallback. On a separate server, pass
+`--portal-server https://portal.example.org` and make the shared secrets
+available with `--infra-dir` (or copy them from `emobase-infra/.env`). See
 [`../emobase-deploy/README.md`](../emobase-deploy/README.md) and
 [DEPLOYMENT.md](DEPLOYMENT.md).
 
@@ -162,10 +210,14 @@ The species nginx proxies `/ibb/blast/` to `PORTAL_INTERNAL_URL` so BLAST
 stays same-origin with the species UI. `PORTAL_INTERNAL_URL` defaults to
 `PORTAL_SERVER`, which is correct for separate servers. When both stacks share
 one Docker host, set it to an internal address such as
-`http://host.docker.internal:9080` (or a name on a shared Docker network, if
-configured); the browser-facing `PORTAL_SERVER` can stay
-`http://localhost:9080`. SSR API/Keycloak/Directus calls use the matching
+`http://host.docker.internal:9080` (or another hostname reachable from the
+species stack's default Docker network); the browser-facing `PORTAL_SERVER` can
+stay `http://localhost:9080`. SSR API/Keycloak/Directus calls use the matching
 `INTERNAL_*` variables and fall back to the public URLs when those are absent.
+Keycloak itself is shared. The portal reaches it inside Docker as
+`http://keycloak:8080/ibb/keycloak`; species stacks use the portal origin
+(`INTERNAL_KEYCLOAK_ISSUER`) so their containers do not join the shared
+infra network and collide with other species' service names.
 
 ## Images
 
@@ -188,7 +240,9 @@ Package settings → Change visibility → Public** once per package.
 
 ## Local development
 
-To build from the sibling source trees instead of pulling images:
+Start `emobase-infra` first so the external `emobase-infra` Docker network and
+the shared MySQL/Keycloak containers exist. Then build from the sibling source
+trees instead of pulling images:
 
 ```bash
 docker compose -f compose.yml -f compose.local.yml up -d --build
@@ -251,9 +305,13 @@ origin embeds the BLAST page.
 
 ## Updating a deployment
 
-Update the portal before any species deployment that depends on it:
+Update `emobase-infra` first when its images or realm change, then the portal,
+then any species deployment:
 
 ```bash
+cd ../emobase-infra
+git pull && docker compose pull && docker compose up -d --wait
+cd ../emobase-portal-deploy
 git pull
 docker compose --profile '*' pull
 docker compose --profile update run --rm migrate-genomics-db
@@ -268,10 +326,10 @@ tag in `.env` and run the same commands.
 
 ## Testing the whole setup
 
-1. Simulate a fresh deployment server: clone **only** this repository into a
-   temporary directory (no `../emobase-*` source directories), create `.env`
-   with `./init.sh`, then follow “Quick start”. This proves the stack is
-   self-contained.
+1. Simulate a fresh deployment server: clone `emobase-infra` and this
+   repository into a temporary directory (no source trees), initialise and
+   start `emobase-infra`, create `.env` with `./init.sh`, then follow “Quick
+   start”. This proves the two runtime repositories are self-contained.
 2. Run `./scripts/smoke-test.sh` and open the portal web UI in a browser. Sign
    in, then check that `/admin/versions` loads without the `versions` 500.
 3. If `emobase-deploy` is part of the test, repeat the checks from
@@ -291,8 +349,12 @@ tag in `.env` and run the same commands.
 - `/public/versions` is global: it returns READY versions for every species in
   this portal, so a single-species client may list versions from other species
   until species filtering is added to the endpoint.
-- To reset everything (destroys data):
+- To reset the portal containers and volumes (destroys portal data, but not
+  the shared MySQL/Keycloak):
 
   ```bash
   docker compose --profile '*' down -v
   ```
+
+  The shared databases are reset separately in `emobase-infra`; see its
+  README.

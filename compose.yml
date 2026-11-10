@@ -15,7 +15,7 @@ x-genomics-service: &genomics-service
 x-genomics-environment: &genomics-environment
   EMOBASE_GENOMICS_ENV_PREFIX: emobase_genomics
   EMOBASE_GENOMICS_HTTP__MODE: ${EMOBASE_GENOMICS_HTTP__MODE:-release}
-  EMOBASE_GENOMICS_MYSQL__HOST: mysql
+  EMOBASE_GENOMICS_MYSQL__HOST: ${EMOBASE_GENOMICS_MYSQL__HOST:-mysql}
   EMOBASE_GENOMICS_MYSQL__PORT: ${EMOBASE_GENOMICS_MYSQL__PORT:-3306}
   EMOBASE_GENOMICS_MYSQL__USER: ${EMOBASE_GENOMICS_MYSQL__USER:-root}
   EMOBASE_GENOMICS_MYSQL__PASSWORD: ${MYSQL_ROOT_PASSWORD}
@@ -53,11 +53,9 @@ services:
       AUTH_SECRET: ${AUTH_SECRET}
       AUTH_TRUST_HOST: "true"
       KEYCLOAK_ISSUER: /ibb/keycloak/realms/ibb
-      KEYCLOAK_CLIENT_ID: ibb-client
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-ibb-client}
       KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
     depends_on:
-      keycloak:
-        condition: service_healthy
       genomicsservice:
         condition: service_healthy
     healthcheck:
@@ -66,6 +64,9 @@ services:
       timeout: 10s
       retries: 18
       start_period: 20s
+    networks:
+      - default
+      - emobase-infra
 
   # ── Genomics API ─────────────────────────────────────────────────────────
   genomicsservice:
@@ -74,7 +75,7 @@ services:
     command: ["api", "-c", "/app/config.yaml"]
     environment:
       <<: *genomics-environment
-      EMOBASE_GENOMICS_KEYCLOAK__URL: http://keycloak:8080/ibb/keycloak
+      EMOBASE_GENOMICS_KEYCLOAK__URL: ${EMOBASE_GENOMICS_KEYCLOAK__URL:-http://keycloak:8080/ibb/keycloak}
       EMOBASE_GENOMICS_KEYCLOAK__REALM: ibb
       EMOBASE_GENOMICS_KEYCLOAK__ISSUER: ${PUBLIC_SERVER}/ibb/keycloak/realms/ibb
       EMOBASE_GENOMICS_KEYCLOAK__REQUIRED_ROLE: default-roles-ibb
@@ -86,11 +87,7 @@ services:
       - jbrowse2-data:/web/
       - blast-data:/db/
     depends_on:
-      mysql:
-        condition: service_healthy
       es:
-        condition: service_healthy
-      keycloak:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health >/dev/null || exit 1"]
@@ -98,6 +95,9 @@ services:
       timeout: 10s
       retries: 18
       start_period: 20s
+    networks:
+      - default
+      - emobase-infra
 
   # ── Genomics job workers ─────────────────────────────────────────────────
   # Workers run JBrowse2/BLAST setup scripts and restart the blast container
@@ -113,10 +113,11 @@ services:
       - blast-data:/db/
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
-      mysql:
-        condition: service_healthy
       es:
         condition: service_healthy
+    networks:
+      - default
+      - emobase-infra
 
   genomicsworker-2:
     <<: *genomics-service
@@ -129,10 +130,11 @@ services:
       - blast-data:/db/
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
-      mysql:
-        condition: service_healthy
       es:
         condition: service_healthy
+    networks:
+      - default
+      - emobase-infra
 
   # ── Reverse proxy / public entrypoint ────────────────────────────────────
   nginx:
@@ -150,10 +152,11 @@ services:
         condition: service_healthy
       genomicsservice:
         condition: service_healthy
-      keycloak:
-        condition: service_healthy
       blast:
         condition: service_started
+    networks:
+      - default
+      - emobase-infra
 
   # ── BLAST (SequenceServer) ───────────────────────────────────────────────
   blast:
@@ -190,22 +193,8 @@ services:
       - jbrowse2-data:/jbrowse2:ro
 
   # ── Infrastructure ───────────────────────────────────────────────────────
-  mysql:
-    image: mysql:8.0
-    container_name: emobase-portal-mysql
-    restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${EMOBASE_GENOMICS_MYSQL__DATABASE:-emobase_genomics}
-    volumes:
-      - mysql-data:/var/lib/mysql
-      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
-    healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$$MYSQL_ROOT_PASSWORD --silent"]
-      interval: 10s
-      timeout: 10s
-      retries: 18
-
+  # MySQL and Keycloak run in the shared emobase-infra stack. This stack joins
+  # that stack's external Docker network and reaches them as mysql/keycloak.
   es:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.17.4
     container_name: emobase-portal-es
@@ -223,42 +212,6 @@ services:
       - es-data:/usr/share/elasticsearch/data
     healthcheck:
       test: ["CMD-SHELL", "curl -s localhost:9200 | grep -q 'You Know, for Search'"]
-      interval: 10s
-      timeout: 10s
-      retries: 18
-
-  keycloak:
-    image: quay.io/keycloak/keycloak:24.0.3
-    container_name: emobase-portal-keycloak
-    restart: unless-stopped
-    command: ["start", "--import-realm", "--health-enabled=true"]
-    volumes:
-      - ./keycloak/ibb-realm.json:/opt/keycloak/data/import/ibb-realm.json:ro
-    environment:
-      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
-      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
-      KC_HOSTNAME_URL: ${PUBLIC_SERVER}/ibb/keycloak/
-      KC_HOSTNAME_ADMIN_URL: ${PUBLIC_SERVER}/ibb/keycloak/
-      KC_HOSTNAME_STRICT: "false"
-      KC_HOSTNAME_STRICT_HTTPS: "false"
-      KC_HTTP_RELATIVE_PATH: /ibb/keycloak/
-      KC_HTTP_ENABLED: "true"
-      KC_PROXY_HEADERS: xforwarded
-      KC_DB: mysql
-      KC_DB_URL_HOST: mysql
-      KC_DB_USERNAME: root
-      KC_DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      KC_DB_SCHEMA: keycloak
-      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
-      PUBLIC_SERVER: ${PUBLIC_SERVER}
-      COCO_USERNAME: ${COCO_USERNAME:-coco}
-      COCO_PASSWORD: ${COCO_PASSWORD}
-      JAVA_OPTS: -Xms256m -Xmx768m
-    depends_on:
-      mysql:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "{ printf 'HEAD /ibb/keycloak/health/ready HTTP/1.0\r\n\r\n' >&0; grep -q 'HTTP/1.0 200'; } 0<>/dev/tcp/localhost/8080"]
       interval: 10s
       timeout: 10s
       retries: 18
@@ -281,9 +234,9 @@ services:
     restart: "no"
     command: ["db:migrate", "-c", "/app/config.yaml"]
     environment: *genomics-environment
-    depends_on:
-      mysql:
-        condition: service_healthy
+    networks:
+      - default
+      - emobase-infra
     profiles:
       - update
 
@@ -300,7 +253,13 @@ services:
       - update
 
 volumes:
-  mysql-data:
   es-data:
   blast-data:
   jbrowse2-data:
+
+networks:
+  # Created by emobase-infra. Use the same EMOBASE_INFRA_NETWORK value in all
+  # three stacks.
+  emobase-infra:
+    external: true
+    name: ${EMOBASE_INFRA_NETWORK:-emobase-infra}
