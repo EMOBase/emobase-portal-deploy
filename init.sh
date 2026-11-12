@@ -21,7 +21,6 @@ PUBLIC_SERVER=
 HTTP_PORT=
 INFRA_DIR=
 
-DEFAULT_PUBLIC_SERVER="http://localhost:9080"
 DEFAULT_HTTP_PORT=9080
 DEFAULT_INFRA_DIR="../emobase-infra"
 DEFAULT_INFRA_NETWORK="emobase-infra"
@@ -29,6 +28,27 @@ DEFAULT_INFRA_NETWORK="emobase-infra"
 fatal() {
   >&2 echo "❌ $1"
   exit 1
+}
+
+# ask VAR "label" "default"
+# Keeps an explicit flag or discovered value; otherwise asks with a default.
+# --yes uses the default without prompting. A non-terminal without --yes aborts.
+ask() {
+  local var="$1" label="$2" default="$3" value
+  [[ -n "${!var:-}" ]] && return 0
+  if [[ "$YES" == true ]]; then
+    printf -v "$var" '%s' "$default"
+    return 0
+  fi
+  if [[ ! -t 0 ]]; then
+    fatal "Cannot ask for ${label}: stdin is not a terminal. Pass --yes or the matching option."
+  fi
+  if [[ -n "$default" ]]; then
+    read -rp "${label} [${default}]: " value
+  else
+    read -rp "${label}: " value
+  fi
+  printf -v "$var" '%s' "${value:-$default}"
 }
 
 generate_secret_key() {
@@ -72,7 +92,8 @@ read_env_value() {
 
 usage() {
   echo "Usage: $0 [-f|--force] [-p|--print] [-y|--yes] [--local] [--public-server URL] [--http-port PORT] [--infra-dir DIR]"
-  echo "  --public-server    Public URL of the portal (default: ${DEFAULT_PUBLIC_SERVER})"
+  echo "Without options, asks each value in order and shows its default."
+  echo "  --public-server    Public URL of the portal (default: http://localhost:<http-port>)"
   echo "  --http-port        Host port for nginx (default: ${DEFAULT_HTTP_PORT})"
   echo "  --infra-dir        emobase-infra checkout whose .env holds the shared"
   echo "                     MySQL/Keycloak secrets (default: ${DEFAULT_INFRA_DIR} when present)"
@@ -133,20 +154,15 @@ if [[ "$PRINT" != true ]]; then
 fi
 
 # Ask for inputs
+ask HTTP_PORT "🔌 Host port for nginx" "$DEFAULT_HTTP_PORT"
+[[ "$HTTP_PORT" =~ ^[0-9]+$ ]] && (( 10#$HTTP_PORT >= 1 && 10#$HTTP_PORT <= 65535 )) \
+  || fatal "HTTP_PORT must be a number between 1 and 65535"
+
 if [[ "$LOCAL" == true ]] && [[ -z "$PUBLIC_SERVER" ]]; then
-  HTTP_PORT="${HTTP_PORT:-$DEFAULT_HTTP_PORT}"
   PUBLIC_SERVER="http://localhost:${HTTP_PORT}"
   >&2 echo "🏠 Local mode: using ${PUBLIC_SERVER}"
 fi
-
-if [[ -z "$PUBLIC_SERVER" ]]; then
-  if [[ "$YES" == true ]]; then
-    PUBLIC_SERVER=${DEFAULT_PUBLIC_SERVER}
-  else
-    read -rp "🌐 Public URL of the portal [${DEFAULT_PUBLIC_SERVER}]: " PUBLIC_SERVER
-    PUBLIC_SERVER="${PUBLIC_SERVER:-${DEFAULT_PUBLIC_SERVER}}"
-  fi
-fi
+ask PUBLIC_SERVER "🌐 Public URL of the portal" "http://localhost:${HTTP_PORT}"
 PUBLIC_SERVER="${PUBLIC_SERVER%/}"
 [[ -z "$PUBLIC_SERVER" ]] && fatal "PUBLIC_SERVER cannot be empty"
 if [[ "$LOCAL" != true ]] && { [[ "$PUBLIC_SERVER" == *localhost* ]] || [[ "$PUBLIC_SERVER" == *127.0.0.1* ]]; }; then
@@ -154,26 +170,13 @@ if [[ "$LOCAL" != true ]] && { [[ "$PUBLIC_SERVER" == *localhost* ]] || [[ "$PUB
   >&2 echo "   machine or container must reach this portal."
 fi
 
-if [[ -z "$HTTP_PORT" ]]; then
-  if [[ "$YES" == true ]]; then
-    HTTP_PORT=${DEFAULT_HTTP_PORT}
-  else
-    read -rp "🔌 Host port for nginx [${DEFAULT_HTTP_PORT}]: " HTTP_PORT
-    HTTP_PORT="${HTTP_PORT:-${DEFAULT_HTTP_PORT}}"
-  fi
-fi
-[[ "$HTTP_PORT" =~ ^[0-9]+$ ]] && (( 10#$HTTP_PORT >= 1 && 10#$HTTP_PORT <= 65535 )) \
-  || fatal "HTTP_PORT must be a number between 1 and 65535"
-
 # Resolve the shared MySQL/Keycloak secrets from emobase-infra. The deploy
 # stacks no longer generate these themselves: one Keycloak client secret and
 # one MySQL root password are shared by every stack.
 if [[ -z "$INFRA_DIR" ]] && [[ -f "${DEFAULT_INFRA_DIR}/.env" ]]; then
   INFRA_DIR="$DEFAULT_INFRA_DIR"
 fi
-if [[ -z "$INFRA_DIR" ]]; then
-  fatal "Shared infrastructure .env not found. Run emobase-infra/init.sh first, or pass --infra-dir DIR."
-fi
+ask INFRA_DIR "📁 emobase-infra checkout" "$DEFAULT_INFRA_DIR"
 [[ -f "$INFRA_DIR/.env" ]] || fatal "No .env in ${INFRA_DIR}; run emobase-infra/init.sh first."
 
 MYSQL_ROOT_PASSWORD=$(read_env_value "$INFRA_DIR/.env" MYSQL_ROOT_PASSWORD || true)

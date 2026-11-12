@@ -69,15 +69,18 @@ full three-repository order, see the
 1. Generate `.env`:
 
    ```bash
-   ./init.sh --public-server https://portal.example.org --http-port 9080
+   ./init.sh
    ```
 
-   The script reads the MySQL/Keycloak secrets, endpoints, realm and client ID
-   from `../emobase-infra/.env` automatically (use `--infra-dir` when it is
-   elsewhere). The portal always uses the shared realm. It asks for missing
-   values and generates the remaining secrets. Review `.env` before continuing,
-   especially the image tags. For a local test, leave the defaults:
-   `./init.sh --yes`.
+   The script asks for the nginx host port and the public portal URL, showing a
+   default for each; press Enter to accept it. It reads the MySQL/Keycloak
+   secrets, endpoints, realm and client ID from `../emobase-infra/.env`
+   automatically (use `--infra-dir` when it is elsewhere). The portal always
+   uses the shared realm. It generates the remaining secrets.
+
+   Review `.env` before continuing, especially the image tags. For automation,
+   pass the matching flags or `--yes` to accept every default without
+   prompting.
 
 2. Pull images (including the one-shot setup/update services):
 
