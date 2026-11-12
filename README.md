@@ -94,7 +94,9 @@ full three-repository order, see the
    ```
 
    The migrations write to the local MySQL instance. They must run after
-   `emobase-infra` is healthy. The JBrowse2 setup only uses the shared volume.
+   `emobase-infra` is healthy. The JBrowse2 setup only uses the shared volume
+   and is safe to re-run: if the volume already contains an installation, the
+   download is skipped.
 
 4. Start the stack and verify:
 

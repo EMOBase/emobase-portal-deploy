@@ -219,7 +219,9 @@ services:
     container_name: emobase-portal-setup-jbrowse2-web
     restart: "no"
     entrypoint: []
-    command: ["jbrowse", "create", "/web"]
+    # Skip the download when the volume already holds a JBrowse2 install, so
+    # re-running setup does not fail or overwrite existing data.
+    command: ["sh", "-c", "test -f /web/index.html || jbrowse create /web"]
     volumes:
       - jbrowse2-data:/web/
     profiles:
