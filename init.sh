@@ -206,13 +206,6 @@ fi
 INFRA_NETWORK=$(read_env_value "$INFRA_DIR/.env" EMOBASE_INFRA_NETWORK || true)
 INFRA_NETWORK="${INFRA_NETWORK:-$DEFAULT_INFRA_NETWORK}"
 
-INFRA_PORTAL_SERVER=$(read_env_value "$INFRA_DIR/.env" PORTAL_PUBLIC_SERVER || true)
-if [[ -n "$INFRA_PORTAL_SERVER" ]] && [[ "${INFRA_PORTAL_SERVER%/}" != "$PUBLIC_SERVER" ]]; then
-  >&2 echo "⚠️  PUBLIC_SERVER (${PUBLIC_SERVER}) does not match"
-  >&2 echo "   ${INFRA_DIR}/.env PORTAL_PUBLIC_SERVER (${INFRA_PORTAL_SERVER})."
-  >&2 echo "   Keycloak redirects will fail until both values are identical."
-fi
-
 >&2 echo "🔗 Using shared MySQL/Keycloak secrets from ${INFRA_DIR}/.env"
 
 ENV_CONTENT="# ── Deployment ──────────────────────────────────────────────────────────────

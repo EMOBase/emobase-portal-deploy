@@ -78,6 +78,16 @@ full three-repository order, see the
    automatically (use `--infra-dir` when it is elsewhere). The portal always
    uses the shared realm. It generates the remaining secrets.
 
+   Keycloak starts with only its master realm. After infra is healthy, create
+   the shared realm with the portal origin:
+
+   ```bash
+   ../emobase-infra/scripts/ensure-shared-realm.sh https://portal.example.org
+   ```
+
+   `emobase create portal`, `emobase up` and `emobase bootstrap` do this
+   automatically when infra is running.
+
    Review `.env` before continuing, especially the image tags. For automation,
    pass the matching flags or `--yes` to accept every default without
    prompting.
@@ -112,7 +122,7 @@ full three-repository order, see the
    `${KEYCLOAK_PUBLIC_URL}/admin/` using the `KEYCLOAK_ADMIN` /
    `KEYCLOAK_ADMIN_PASSWORD` from `../emobase-infra/.env`.
 
-The imported realm user (`COCO_USERNAME`) has the realm's default role
+The shared-realm seed user (`COCO_USERNAME`) has the realm's default role
 (`default-roles-<realm>`) and can sign in to the portal and every species site
 on this server. Its password is temporary; Keycloak asks for a new password on
 first login. Create more users from the Keycloak admin console.
