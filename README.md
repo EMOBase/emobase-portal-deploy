@@ -60,108 +60,35 @@ The portal serves:
 
 ## Quick start (portal)
 
-`compose.yml` contains no `build:` sections. The local
-[`emobase-infra`](https://github.com/EMOBase/emobase-infra) must be running
-first; its `.env` supplies the MySQL/Keycloak endpoints and secrets. For the
-full three-repository order, see the
-[deployment guide](https://github.com/EMOBase/emobase-docs/blob/main/DEPLOYMENT.md).
-
-1. Generate `.env`:
-
-   ```bash
-   ./init.sh
-   ```
-
-   The script asks for the nginx host port, the public portal URL and the portal
-   Keycloak realm/client names, showing defaults for each. The defaults are
-   `emobase-portal` and `emobase-portal-client`. Without `--local`, the portal
-   URL defaults to the detected host IPv4 address. If this server is behind NAT,
-   enter its public IP or domain instead.
-
-   The portal owns this realm and generates its client secret and seed-user
-   password. It reads only the MySQL/Keycloak endpoints and MySQL root password
-   from `../emobase-infra/.env` (use `--infra-dir` when it is elsewhere).
-
-   Keycloak starts with only its master realm. After infra is healthy, create
-   the portal realm with its origin:
-
-   ```bash
-   ../emobase-infra/scripts/create-realm.sh \
-     --realm emobase-portal \
-     --origin https://portal.example.org \
-     --client-id emobase-portal-client \
-     --client-secret "<KEYCLOAK_CLIENT_SECRET from .env>" \
-     --coco-username coco \
-     --coco-password "<COCO_PASSWORD from .env>"
-   ```
-
-   `emobase create portal`, `emobase up` and `emobase bootstrap` do this
-   automatically when infra is running.
-
-   Review `.env` before continuing, especially the image tags. For automation,
-   pass the matching flags or `--yes` to accept every default without
-   prompting.
-
-2. Create the portal database, then pull images (including the one-shot
-   setup/update services):
-
-   ```bash
-   ../emobase-infra/scripts/create-database.sh emobase_genomics
-   ```
-
-   ```bash
-   docker compose --profile '*' pull
-   ```
-
-3. Initialise JBrowse2 and run the database migrations:
-
-   ```bash
-   docker compose --profile setup run --rm setup-jbrowse2-web
-   docker compose --profile update run --rm migrate-genomics-db
-   docker compose --profile update run --rm migrate-genomics-es
-   ```
-
-   The migrations write to the local MySQL instance. They must run after
-   `emobase-infra` is healthy. The JBrowse2 setup only uses the shared volume
-   and is safe to re-run: if the volume already contains an installation, the
-   download is skipped.
-
-4. Start the stack and verify:
-
-   ```bash
-   docker compose up -d --wait
-   ./scripts/smoke-test.sh
-   ```
-
-5. Open `${PUBLIC_SERVER}`. Keycloak admin is at
-   `${KEYCLOAK_PUBLIC_URL}/admin/` using the `KEYCLOAK_ADMIN` /
-   `KEYCLOAK_ADMIN_PASSWORD` from `../emobase-infra/.env`.
-
-The portal realm's seed user (`COCO_USERNAME`) has the realm's default role
-(`default-roles-<realm>`). Species can join this realm and share the same user
-directory. Its password is temporary; Keycloak asks for a new password on first
-login. Create more users from the Keycloak admin console.
-
-The migrations must run **before the portal web UI is used**. If they are
-skipped the API returns `500` because tables such as `versions` do not exist
-yet.
-
-`/blast/` may return `502` until the first release has built BLAST databases.
-The smoke test reports that as a warning; set `STRICT_BLAST=1` to make it fatal.
-
-### Local trial (no domain)
-
-With the local `emobase-infra` running, use `localhost` for the portal:
+The local [`emobase-infra`](https://github.com/EMOBase/emobase-infra) must be
+running first.
 
 ```bash
-./init.sh --local
+./init.sh
+
+../emobase-infra/scripts/create-database.sh emobase_genomics
+../emobase-infra/scripts/create-realm.sh \
+  --realm "$(grep '^KEYCLOAK_REALM=' .env | cut -d= -f2-)" \
+  --origin "$(grep '^PUBLIC_SERVER=' .env | cut -d= -f2-)" \
+  --client-id "$(grep '^KEYCLOAK_CLIENT_ID=' .env | cut -d= -f2-)" \
+  --client-secret "$(grep '^KEYCLOAK_CLIENT_SECRET=' .env | cut -d= -f2-)" \
+  --coco-username "$(grep '^COCO_USERNAME=' .env | cut -d= -f2-)" \
+  --coco-password "$(grep '^COCO_PASSWORD=' .env | cut -d= -f2-)" \
+  --keep-password --quiet
+
+docker compose --profile '*' pull
+docker compose --profile setup run --rm setup-jbrowse2-web
+docker compose --profile update run --rm migrate-genomics-db
+docker compose --profile update run --rm migrate-genomics-es
+docker compose up -d --wait
+./scripts/smoke-test.sh
 ```
 
-Then continue with the pull/setup/start steps above and open
-`http://localhost:9080`. Keycloak is at
-`http://localhost:8081/keycloak/`. For the full local walkthrough including
-the species stack, see
-[Local setup](https://github.com/EMOBase/emobase-docs/blob/main/DEPLOYMENT.md#local-setup-no-public-server).
+Use `./init.sh --local` for a same-machine trial.
+
+- [`init.sh` reference](INIT.md)
+- [Full deployment order](https://github.com/EMOBase/emobase-docs/blob/main/DEPLOYMENT.md)
+- [Realm ownership](https://github.com/EMOBase/emobase-docs/blob/main/REALMS.md)
 
 ## Species sites
 
