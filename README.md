@@ -72,19 +72,27 @@ full three-repository order, see the
    ./init.sh
    ```
 
-   The script asks for the nginx host port and the public portal URL, showing a
-   default for each; press Enter to accept it. Without `--local`, the portal URL
-   defaults to the detected host IPv4 address. If this server is behind NAT,
-   enter its public IP or domain instead. It reads the MySQL/Keycloak secrets,
-   endpoints, realm and client ID from `../emobase-infra/.env`
-   automatically (use `--infra-dir` when it is elsewhere). The portal always
-   uses the shared realm. It generates the remaining secrets.
+   The script asks for the nginx host port, the public portal URL and the portal
+   Keycloak realm/client names, showing defaults for each. The defaults are
+   `emobase-portal` and `emobase-portal-client`. Without `--local`, the portal
+   URL defaults to the detected host IPv4 address. If this server is behind NAT,
+   enter its public IP or domain instead.
+
+   The portal owns this realm and generates its client secret and seed-user
+   password. It reads only the MySQL/Keycloak endpoints and MySQL root password
+   from `../emobase-infra/.env` (use `--infra-dir` when it is elsewhere).
 
    Keycloak starts with only its master realm. After infra is healthy, create
-   the shared realm with the portal origin:
+   the portal realm with its origin:
 
    ```bash
-   ../emobase-infra/scripts/ensure-shared-realm.sh https://portal.example.org
+   ../emobase-infra/scripts/create-realm.sh \
+     --realm emobase-portal \
+     --origin https://portal.example.org \
+     --client-id emobase-portal-client \
+     --client-secret "<KEYCLOAK_CLIENT_SECRET from .env>" \
+     --coco-username coco \
+     --coco-password "<COCO_PASSWORD from .env>"
    ```
 
    `emobase create portal`, `emobase up` and `emobase bootstrap` do this
@@ -94,7 +102,12 @@ full three-repository order, see the
    pass the matching flags or `--yes` to accept every default without
    prompting.
 
-2. Pull images (including the one-shot setup/update services):
+2. Create the portal database, then pull images (including the one-shot
+   setup/update services):
+
+   ```bash
+   ../emobase-infra/scripts/create-database.sh emobase_genomics
+   ```
 
    ```bash
    docker compose --profile '*' pull
@@ -124,10 +137,10 @@ full three-repository order, see the
    `${KEYCLOAK_PUBLIC_URL}/admin/` using the `KEYCLOAK_ADMIN` /
    `KEYCLOAK_ADMIN_PASSWORD` from `../emobase-infra/.env`.
 
-The shared-realm seed user (`COCO_USERNAME`) has the realm's default role
-(`default-roles-<realm>`) and can sign in to the portal and every species site
-on this server. Its password is temporary; Keycloak asks for a new password on
-first login. Create more users from the Keycloak admin console.
+The portal realm's seed user (`COCO_USERNAME`) has the realm's default role
+(`default-roles-<realm>`). Species can join this realm and share the same user
+directory. Its password is temporary; Keycloak asks for a new password on first
+login. Create more users from the Keycloak admin console.
 
 The migrations must run **before the portal web UI is used**. If they are
 skipped the API returns `500` because tables such as `versions` do not exist

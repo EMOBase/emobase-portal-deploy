@@ -20,10 +20,17 @@ LOCAL=false
 PUBLIC_SERVER=
 HTTP_PORT=
 INFRA_DIR=
+KEYCLOAK_REALM=
+KEYCLOAK_CLIENT_ID=
+KEYCLOAK_CLIENT_SECRET=
+COCO_USERNAME=
+COCO_PASSWORD=
 
 DEFAULT_HTTP_PORT=9080
 DEFAULT_INFRA_DIR="../emobase-infra"
 DEFAULT_INFRA_NETWORK="emobase-infra"
+DEFAULT_KEYCLOAK_REALM="emobase-portal"
+DEFAULT_KEYCLOAK_CLIENT_ID="emobase-portal-client"
 
 fatal() {
   >&2 echo "❌ $1"
@@ -115,12 +122,19 @@ read_env_value() {
 }
 
 usage() {
-  echo "Usage: $0 [-f|--force] [-p|--print] [-y|--yes] [--local] [--public-server URL] [--http-port PORT] [--infra-dir DIR]"
+  echo "Usage: $0 [-f|--force] [-p|--print] [-y|--yes] [--local] [--public-server URL] [--http-port PORT] [--infra-dir DIR] [--keycloak-realm NAME] [--keycloak-client-id ID] [--keycloak-client-secret SECRET] [--coco-username USER] [--coco-password PASSWORD]"
   echo "Without options, asks each value in order and shows its default."
   echo "  --public-server    Public URL of the portal (default: http://localhost:<http-port>)"
   echo "  --http-port        Host port for nginx (default: ${DEFAULT_HTTP_PORT})"
   echo "  --infra-dir        emobase-infra checkout whose .env holds the shared"
-  echo "                     MySQL/Keycloak secrets (default: ${DEFAULT_INFRA_DIR} when present)"
+  echo "                     MySQL/Keycloak URLs (default: ${DEFAULT_INFRA_DIR} when present)"
+  echo "  --keycloak-realm   Portal realm (default: ${DEFAULT_KEYCLOAK_REALM})"
+  echo "  --keycloak-client-id"
+  echo "                     Client in the portal realm (default: ${DEFAULT_KEYCLOAK_CLIENT_ID})"
+  echo "  --keycloak-client-secret"
+  echo "                     Client secret (generated when omitted)"
+  echo "  --coco-username    Seed user (default: coco)"
+  echo "  --coco-password    Seed user password (generated when omitted)"
   echo "  --local            Use localhost in PUBLIC_SERVER for a local trial"
   echo "  -f, --force        Overwrite an existing .env file"
   echo "  -y, --yes          Use defaults without prompting (secrets are still generated)"
@@ -141,6 +155,26 @@ while [[ $# -gt 0 ]]; do
       ;;
     --infra-dir)
       INFRA_DIR="$2"
+      shift 2
+      ;;
+    --keycloak-realm)
+      KEYCLOAK_REALM="$2"
+      shift 2
+      ;;
+    --keycloak-client-id)
+      KEYCLOAK_CLIENT_ID="$2"
+      shift 2
+      ;;
+    --keycloak-client-secret)
+      KEYCLOAK_CLIENT_SECRET="$2"
+      shift 2
+      ;;
+    --coco-username)
+      COCO_USERNAME="$2"
+      shift 2
+      ;;
+    --coco-password)
+      COCO_PASSWORD="$2"
       shift 2
       ;;
     -f|--force)
@@ -216,14 +250,18 @@ ask INFRA_DIR "📁 emobase-infra checkout" "$DEFAULT_INFRA_DIR"
 MYSQL_ROOT_PASSWORD=$(read_env_value "$INFRA_DIR/.env" MYSQL_ROOT_PASSWORD || true)
 [[ -n "$MYSQL_ROOT_PASSWORD" ]] \
   || fatal "${INFRA_DIR}/.env has no MYSQL_ROOT_PASSWORD; re-run emobase-infra/init.sh."
-KEYCLOAK_CLIENT_SECRET=$(read_env_value "$INFRA_DIR/.env" KEYCLOAK_CLIENT_SECRET || true)
-[[ -n "$KEYCLOAK_CLIENT_SECRET" ]] \
-  || fatal "${INFRA_DIR}/.env has no KEYCLOAK_CLIENT_SECRET; re-run emobase-infra/init.sh."
 
-KEYCLOAK_REALM=$(read_env_value "$INFRA_DIR/.env" KEYCLOAK_REALM || true)
-KEYCLOAK_REALM="${KEYCLOAK_REALM:-ibb}"
-KEYCLOAK_CLIENT_ID=$(read_env_value "$INFRA_DIR/.env" KEYCLOAK_CLIENT_ID || true)
-KEYCLOAK_CLIENT_ID="${KEYCLOAK_CLIENT_ID:-ibb-client}"
+ask KEYCLOAK_REALM "🔐 Portal Keycloak realm" "$DEFAULT_KEYCLOAK_REALM"
+ask KEYCLOAK_CLIENT_ID "🔑 Portal Keycloak client ID" "$DEFAULT_KEYCLOAK_CLIENT_ID"
+ask COCO_USERNAME "👤 Seed user" "coco"
+KEYCLOAK_CLIENT_SECRET="${KEYCLOAK_CLIENT_SECRET:-$(generate_secret_key 32)}"
+COCO_PASSWORD="${COCO_PASSWORD:-$(generate_password)}"
+
+[[ "$KEYCLOAK_REALM" =~ ^[a-zA-Z0-9_.-]+$ ]] \
+  || fatal "KEYCLOAK_REALM contains invalid characters"
+[[ "$KEYCLOAK_CLIENT_ID" =~ ^[a-zA-Z0-9_.-]+$ ]] \
+  || fatal "KEYCLOAK_CLIENT_ID contains invalid characters"
+
 KEYCLOAK_PUBLIC_URL=$(read_env_value "$INFRA_DIR/.env" KEYCLOAK_PUBLIC_URL || true)
 KEYCLOAK_PUBLIC_URL="${KEYCLOAK_PUBLIC_URL:-http://localhost:8081/keycloak}"
 KEYCLOAK_INTERNAL_URL=$(read_env_value "$INFRA_DIR/.env" KEYCLOAK_INTERNAL_URL || true)
@@ -263,12 +301,9 @@ EMOBASE_GENOMICS_MYSQL__PORT=3306
 EMOBASE_GENOMICS_MYSQL__USER=root
 EMOBASE_GENOMICS_MYSQL__DATABASE=emobase_genomics
 
-# Keycloak endpoint/realm/client. The portal always uses the realm from
-# emobase-infra; species deployments may create dedicated realms.
+# Keycloak endpoints. The portal owns the realm/client below.
 KEYCLOAK_PUBLIC_URL=${KEYCLOAK_PUBLIC_URL}
 KEYCLOAK_INTERNAL_URL=${KEYCLOAK_INTERNAL_URL}
-KEYCLOAK_REALM=${KEYCLOAK_REALM}
-KEYCLOAK_CLIENT_ID=${KEYCLOAK_CLIENT_ID}
 
 # ── EMOBase Genomics ────────────────────────────────────────────────────────
 EMOBASE_GENOMICS_ELASTICSEARCH__INDEX_PREFIX=genomics
@@ -294,11 +329,17 @@ BLAST_CONTAINER_NAME=emobase-portal-blast
 EMOBASE_GENOMICS_IMAGE=ghcr.io/emobase/emobase-genomics:dev
 EMOBASE_PORTAL_WEB_IMAGE=ghcr.io/emobase/emobase-portal-web:main
 
-# ── Secrets ─────────────────────────────────────────────────────────────────
-# MYSQL_ROOT_PASSWORD and KEYCLOAK_CLIENT_SECRET are copied from
-# ${INFRA_DIR}/.env so this stack uses the shared MySQL and Keycloak.
-MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+# ── Keycloak realm ──────────────────────────────────────────────────────────
+# This portal owns its realm and client. Species can join this realm.
+KEYCLOAK_REALM=${KEYCLOAK_REALM}
+KEYCLOAK_CLIENT_ID=${KEYCLOAK_CLIENT_ID}
 KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET}
+COCO_USERNAME=${COCO_USERNAME}
+COCO_PASSWORD=${COCO_PASSWORD}
+
+# ── Secrets ─────────────────────────────────────────────────────────────────
+# MYSQL_ROOT_PASSWORD is copied from ${INFRA_DIR}/.env.
+MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
 
 # Generated by init.sh. Keep this file private.
 AUTH_SECRET=$(generate_secret_key 48)"
@@ -315,15 +356,23 @@ mkdir -p data/public/emobase-genomics
 >&2 echo "✅ .env file generated successfully"
 >&2 echo "   Portal URL: ${PUBLIC_SERVER}"
 >&2 echo "   nginx port: ${HTTP_PORT}"
+>&2 echo "   Realm:      ${KEYCLOAK_REALM} (${KEYCLOAK_CLIENT_ID})"
 >&2 echo
 >&2 echo "Next:"
 >&2 echo "  1. Make sure emobase-infra is running (docker compose up -d --wait there)."
->&2 echo "  2. Review .env (image tags, secrets)."
->&2 echo "  3. docker compose --profile '*' pull"
->&2 echo "  4. docker compose --profile setup run --rm setup-jbrowse2-web"
->&2 echo "  5. docker compose --profile update run --rm migrate-genomics-db"
->&2 echo "  6. docker compose --profile update run --rm migrate-genomics-es"
->&2 echo "  7. docker compose up -d --wait"
->&2 echo "  8. ./scripts/smoke-test.sh"
+>&2 echo "  2. Create the portal realm with its origin:"
+>&2 echo "       ${INFRA_DIR}/scripts/create-realm.sh \\"
+>&2 echo "         --realm ${KEYCLOAK_REALM} --origin ${PUBLIC_SERVER} \\"
+>&2 echo "         --client-id ${KEYCLOAK_CLIENT_ID} \\"
+>&2 echo "         --client-secret '${KEYCLOAK_CLIENT_SECRET}' \\"
+>&2 echo "         --coco-username ${COCO_USERNAME} --coco-password '${COCO_PASSWORD}'"
+>&2 echo "     (emobase create portal, up or bootstrap does this automatically.)"
+>&2 echo "  3. Review .env (image tags, secrets)."
+>&2 echo "  4. docker compose --profile '*' pull"
+>&2 echo "  5. docker compose --profile setup run --rm setup-jbrowse2-web"
+>&2 echo "  6. docker compose --profile update run --rm migrate-genomics-db"
+>&2 echo "  7. docker compose --profile update run --rm migrate-genomics-es"
+>&2 echo "  8. docker compose up -d --wait"
+>&2 echo "  9. ./scripts/smoke-test.sh"
 >&2 echo
 >&2 echo "Then deploy the species site with emobase-deploy (see the emobase-docs deployment guide)."
