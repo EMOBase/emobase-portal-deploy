@@ -99,7 +99,7 @@ generate_password() {
   # in MySQLMigrateDSN, and golang-migrate's MySQL driver url.QueryUnescape()s
   # that password, turning "+" into a space. The API/workers use a different
   # DSN builder and connect fine, but db:migrate fails with "Access denied".
-  symbol=$(LC_ALL=C tr -dc '_-=' </dev/urandom | head -c1 || true)
+  symbol=$(LC_ALL=C tr -dc '_=-' </dev/urandom | head -c1 || true)
 
   rest_length=$((length - 4))
   rest=$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c "$rest_length" || true)
