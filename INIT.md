@@ -122,5 +122,11 @@ docker compose up -d --wait
 ./scripts/smoke-test.sh
 ```
 
+`setup-jbrowse2-web` installs the release named by `JBROWSE_DOWNLOAD_URL`
+directly. The default is pinned, so setup does not query the GitHub API, which
+allows only 60 anonymous requests per hour per IP and can fail with HTTP 403 on
+shared hosts. Set `JBROWSE_DOWNLOAD_URL` in `.env` to upgrade JBrowse2 or to use
+a local mirror.
+
 See [REALMS.md](https://github.com/EMOBase/emobase-docs/blob/main/REALMS.md)
 for realm ownership and sharing.

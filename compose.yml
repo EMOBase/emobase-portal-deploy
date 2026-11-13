@@ -219,9 +219,14 @@ services:
     container_name: emobase-portal-setup-jbrowse2-web
     restart: "no"
     entrypoint: []
+    # Download a pinned release directly instead of asking the GitHub API for
+    # the latest one. Anonymous GitHub API calls are limited to 60 per hour per
+    # IP and fail with HTTP 403 on shared hosts.
+    environment:
+      JBROWSE_DOWNLOAD_URL: ${JBROWSE_DOWNLOAD_URL:-https://github.com/GMOD/jbrowse-components/releases/download/v4.3.0/jbrowse-web-v4.3.0.zip}
     # Skip the download when the volume already holds a JBrowse2 install, so
     # re-running setup does not fail or overwrite existing data.
-    command: ["sh", "-c", "test -f /web/index.html || jbrowse create /web"]
+    command: ["sh", "-c", "test -f /web/index.html || jbrowse create /web --url \"$${JBROWSE_DOWNLOAD_URL}\""]
     volumes:
       - jbrowse2-data:/web/
     profiles:

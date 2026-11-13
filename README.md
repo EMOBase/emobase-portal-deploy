@@ -86,6 +86,10 @@ docker compose up -d --wait
 
 Use `./init.sh --local` for a same-machine trial.
 
+`setup-jbrowse2-web` downloads the pinned `JBROWSE_DOWNLOAD_URL` release
+directly, so it does not depend on the rate-limited GitHub API. Override that
+variable in `.env` to upgrade JBrowse2 or use a mirror.
+
 - [`init.sh` reference](INIT.md)
 - [Full deployment order](https://github.com/EMOBase/emobase-docs/blob/main/DEPLOYMENT.md)
 - [Realm ownership](https://github.com/EMOBase/emobase-docs/blob/main/REALMS.md)
