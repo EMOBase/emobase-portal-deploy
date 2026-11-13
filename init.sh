@@ -51,6 +51,30 @@ ask() {
   printf -v "$var" '%s' "${value:-$default}"
 }
 
+# detect_host_ip prints the address used for the default route. It is the
+# server's reachable interface address, not necessarily its internet-facing
+# address when the host is behind NAT.
+detect_host_ip() {
+  local ip
+  ip=$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{
+    for (i = 1; i <= NF; i++) if ($i == "src") { print $(i + 1); exit }
+  }')
+  if [[ -z "$ip" ]]; then
+    ip=$(hostname -I 2>/dev/null | awk '{
+      for (i = 1; i <= NF; i++) if ($i !~ /^127\./) { print $i; exit }
+    }')
+  fi
+  if [[ -z "$ip" ]] && command -v ipconfig >/dev/null 2>&1; then
+    ip=$(ipconfig getifaddr en0 2>/dev/null || true)
+  fi
+  printf '%s\n' "$ip"
+}
+
+is_private_ip() {
+  [[ "$1" =~ ^10\. ]] || [[ "$1" =~ ^192\.168\. ]] || \
+    [[ "$1" =~ ^172\.(1[6-9]|2[0-9]|3[01])\. ]]
+}
+
 generate_secret_key() {
   length="${1:-32}"
   local key # Needed to avoid pipefail
@@ -158,11 +182,21 @@ ask HTTP_PORT "🔌 Host port for nginx" "$DEFAULT_HTTP_PORT"
 [[ "$HTTP_PORT" =~ ^[0-9]+$ ]] && (( 10#$HTTP_PORT >= 1 && 10#$HTTP_PORT <= 65535 )) \
   || fatal "HTTP_PORT must be a number between 1 and 65535"
 
+default_public="http://localhost:${HTTP_PORT}"
+if [[ "$LOCAL" != true ]]; then
+  host_ip=$(detect_host_ip)
+  if [[ -n "$host_ip" ]]; then
+    default_public="http://${host_ip}:${HTTP_PORT}"
+    if [[ -z "$PUBLIC_SERVER" ]] && is_private_ip "$host_ip"; then
+      >&2 echo "⚠️  Detected host address ${host_ip}; use the public IP or domain if this server is behind NAT."
+    fi
+  fi
+fi
 if [[ "$LOCAL" == true ]] && [[ -z "$PUBLIC_SERVER" ]]; then
   PUBLIC_SERVER="http://localhost:${HTTP_PORT}"
   >&2 echo "🏠 Local mode: using ${PUBLIC_SERVER}"
 fi
-ask PUBLIC_SERVER "🌐 Public URL of the portal" "http://localhost:${HTTP_PORT}"
+ask PUBLIC_SERVER "🌐 Public URL of the portal" "$default_public"
 PUBLIC_SERVER="${PUBLIC_SERVER%/}"
 [[ -z "$PUBLIC_SERVER" ]] && fatal "PUBLIC_SERVER cannot be empty"
 if [[ "$LOCAL" != true ]] && { [[ "$PUBLIC_SERVER" == *localhost* ]] || [[ "$PUBLIC_SERVER" == *127.0.0.1* ]]; }; then

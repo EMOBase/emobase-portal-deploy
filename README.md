@@ -73,8 +73,10 @@ full three-repository order, see the
    ```
 
    The script asks for the nginx host port and the public portal URL, showing a
-   default for each; press Enter to accept it. It reads the MySQL/Keycloak
-   secrets, endpoints, realm and client ID from `../emobase-infra/.env`
+   default for each; press Enter to accept it. Without `--local`, the portal URL
+   defaults to the detected host IPv4 address. If this server is behind NAT,
+   enter its public IP or domain instead. It reads the MySQL/Keycloak secrets,
+   endpoints, realm and client ID from `../emobase-infra/.env`
    automatically (use `--infra-dir` when it is elsewhere). The portal always
    uses the shared realm. It generates the remaining secrets.
 
