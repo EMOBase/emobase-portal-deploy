@@ -1,10 +1,10 @@
 # EMOBase Portal deployment
 
 Multi-species deployment stack: **emobase-portal-web** (Astro SSR UI) in front
-of **emobase-genomics** (API, workers, Elasticsearch, JBrowse2, BLAST).
-MySQL and Keycloak are **not** part of this stack; they run once per server in
-[`emobase-infra`](https://github.com/EMOBase/emobase-infra) and are used by the
-portal and every species deployment on that server.
+of **emobase-genomics** (API, workers, JBrowse2, BLAST).
+MySQL, Keycloak and Elasticsearch are **not** part of this stack; they run once
+per server in [`emobase-infra`](https://github.com/EMOBase/emobase-infra) and
+are used by the portal and every species deployment on that server.
 
 A deployment server needs **this repository, `emobase-infra`, Docker** and, for
 species sites, `emobase-deploy`.
@@ -24,14 +24,17 @@ species sites, `emobase-deploy`.
 | `genomicsservice` | Genomics API (`ghcr.io/emobase/emobase-genomics`) |
 | `genomicsworker-1/2` | Async upload/JBrowse2/BLAST jobs |
 | `nginx` | Public entrypoint and reverse proxy |
-| `es` | Elasticsearch for search indices |
 | `blast` | SequenceServer BLAST UI |
 | `setup-jbrowse2-web` | One-shot JBrowse2 web-root initialisation |
 | `migrate-genomics-db` / `migrate-genomics-es` | One-shot genomics migrations |
 
 The portal connects to this server's `emobase-infra` over the shared
-`emobase-infra` Docker network using the service names `mysql` and `keycloak`.
-Keycloak is also reachable at `KEYCLOAK_PUBLIC_URL`.
+`emobase-infra` Docker network using the service names `mysql`, `keycloak` and
+`elasticsearch`. Keycloak is also reachable at `KEYCLOAK_PUBLIC_URL`.
+
+Elasticsearch is shared with every species stack. The portal writes its indices
+under the `EMOBASE_GENOMICS_ELASTICSEARCH__INDEX_PREFIX` (default `genomics`),
+so it never touches a species' indices.
 
 The portal serves:
 
@@ -219,10 +222,11 @@ tag in `.env` and run the same commands.
   this portal, so a single-species client may list versions from other species
   until species filtering is added to the endpoint.
 - To reset the portal containers and volumes (destroys portal data, but not
-  the local MySQL/Keycloak):
+  the shared MySQL/Keycloak/Elasticsearch data):
 
   ```bash
   docker compose --profile '*' down -v
   ```
 
-  The local databases are reset separately in `emobase-infra`; see its README.
+  The shared databases and `genomics-*` indices are not removed; reset them
+  separately in `emobase-infra`; see its README.

@@ -298,8 +298,9 @@ PUBLIC_DATA_DIR=./data/public
 JBROWSE_DOWNLOAD_URL=https://github.com/GMOD/jbrowse-components/releases/download/v4.3.0/jbrowse-web-v4.3.0.zip
 
 # ── Shared infrastructure ───────────────────────────────────────────────────
-# MySQL and Keycloak run in the sibling emobase-infra stack. Start it first.
-# This stack joins its Docker network; the service names below resolve there.
+# MySQL, Keycloak and Elasticsearch run in the sibling emobase-infra stack.
+# Start it first. This stack joins its Docker network; the service names below
+# resolve there.
 EMOBASE_INFRA_NETWORK=${INFRA_NETWORK}
 EMOBASE_GENOMICS_MYSQL__HOST=mysql
 EMOBASE_GENOMICS_MYSQL__PORT=3306
@@ -311,6 +312,7 @@ KEYCLOAK_PUBLIC_URL=${KEYCLOAK_PUBLIC_URL}
 KEYCLOAK_INTERNAL_URL=${KEYCLOAK_INTERNAL_URL}
 
 # ── EMOBase Genomics ────────────────────────────────────────────────────────
+# The portal writes only genomics-* indices in the shared Elasticsearch.
 EMOBASE_GENOMICS_ELASTICSEARCH__INDEX_PREFIX=genomics
 EMOBASE_GENOMICS_BLAST__DISPLAY_NAME=EMOBase
 

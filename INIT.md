@@ -48,8 +48,9 @@ COCO_USERNAME=coco
 COCO_PASSWORD=...
 ```
 
-It also contains the MySQL/Keycloak endpoints and `MYSQL_ROOT_PASSWORD` read
-from `../emobase-infra/.env`.
+It also contains the MySQL/Keycloak endpoints, the `genomics` Elasticsearch
+index prefix and `MYSQL_ROOT_PASSWORD` read from `../emobase-infra/.env`.
+Elasticsearch itself is reached at `elasticsearch:9200` on the shared network.
 
 ## Flags
 
