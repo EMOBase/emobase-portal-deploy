@@ -71,7 +71,7 @@ check "/api/genomicsservice/v1/public/versions?status=READY"
 check /api/genomicsservice/v1/docs
 
 # Keycloak realm (its own per-server endpoint, not the portal origin)
-check "${KEYCLOAK_PUBLIC_URL}/realms/${KEYCLOAK_REALM:-ibb}"
+check "${KEYCLOAK_PUBLIC_URL}/realms/${KEYCLOAK_REALM}"
 
 # JBrowse2 static entrypoint, and BLAST (soft until data exists)
 check /jbrowse/ 200

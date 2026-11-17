@@ -50,13 +50,13 @@ services:
       PUBLIC_UI_PAGE_BLAST: /blast/
       PUBLIC_UI_PAGE_API_DOC: /api/genomicsservice/v1/docs
       INTERNAL_API_GENOMICS_SERVICE: ${INTERNAL_API_GENOMICS_SERVICE:-http://genomicsservice:8080}
-      INTERNAL_KEYCLOAK_ISSUER: ${KEYCLOAK_INTERNAL_URL}/realms/${KEYCLOAK_REALM:-ibb}
+      INTERNAL_KEYCLOAK_ISSUER: ${KEYCLOAK_INTERNAL_URL}/realms/${KEYCLOAK_REALM}
       AUTH_SECRET: ${AUTH_SECRET}
       # Canonical browser-facing origin for Auth.js redirects. Deriving it from
       # PUBLIC_SERVER avoids reconstructing it from proxy headers.
       AUTH_URL: ${PUBLIC_SERVER}
       AUTH_TRUST_HOST: "true"
-      KEYCLOAK_ISSUER: ${KEYCLOAK_PUBLIC_URL}/realms/${KEYCLOAK_REALM:-ibb}
+      KEYCLOAK_ISSUER: ${KEYCLOAK_PUBLIC_URL}/realms/${KEYCLOAK_REALM}
       KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID}
       KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
     depends_on:
@@ -80,9 +80,9 @@ services:
     environment:
       <<: *genomics-environment
       EMOBASE_GENOMICS_KEYCLOAK__URL: ${KEYCLOAK_INTERNAL_URL:-http://keycloak:8080/keycloak}
-      EMOBASE_GENOMICS_KEYCLOAK__REALM: ${KEYCLOAK_REALM:-ibb}
-      EMOBASE_GENOMICS_KEYCLOAK__ISSUER: ${KEYCLOAK_PUBLIC_URL}/realms/${KEYCLOAK_REALM:-ibb}
-      EMOBASE_GENOMICS_KEYCLOAK__REQUIRED_ROLE: default-roles-${KEYCLOAK_REALM:-ibb}
+      EMOBASE_GENOMICS_KEYCLOAK__REALM: ${KEYCLOAK_REALM}
+      EMOBASE_GENOMICS_KEYCLOAK__ISSUER: ${KEYCLOAK_PUBLIC_URL}/realms/${KEYCLOAK_REALM}
+      EMOBASE_GENOMICS_KEYCLOAK__REQUIRED_ROLE: default-roles-${KEYCLOAK_REALM}
       # Must match the public path proxied by nginx; tus uses it to build the
       # Location header returned to the browser.
       EMOBASE_GENOMICS_UPLOADS__TUS_BASE_PATH: /api/genomicsservice/v1/uploads
