@@ -15,7 +15,9 @@ realm and its client/seed credentials.
 ./init.sh
 ```
 
-Every question shows a default. Press Enter to accept it.
+Every question shows a default. Press Enter to accept it. An invalid
+interactive answer is rejected and the question is asked again. Values passed
+as flags are validated once; an invalid flag stops the script.
 
 ## Prompt order
 

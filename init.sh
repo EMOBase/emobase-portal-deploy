@@ -37,25 +37,62 @@ fatal() {
   exit 1
 }
 
-# ask VAR "label" "default"
+# ask VAR "label" "default" [VALIDATOR] [ERROR]
 # Keeps an explicit flag or discovered value; otherwise asks with a default.
-# --yes uses the default without prompting. A non-terminal without --yes aborts.
+# --yes uses the default without prompting. An invalid explicit or default
+# value is fatal; an invalid interactive answer is rejected and asked again.
+# A non-terminal without --yes aborts.
 ask() {
-  local var="$1" label="$2" default="$3" value
-  [[ -n "${!var:-}" ]] && return 0
+  local var="$1" label="$2" default="$3" validator="${4:-}" error="${5:-Invalid value}" value
+  if [[ -n "${!var:-}" ]]; then
+    if [[ -n "$validator" ]] && ! "$validator" "${!var}"; then
+      fatal "$error"
+    fi
+    return 0
+  fi
   if [[ "$YES" == true ]]; then
     printf -v "$var" '%s' "$default"
+    if [[ -n "$validator" ]] && ! "$validator" "$default"; then
+      fatal "$error"
+    fi
     return 0
   fi
   if [[ ! -t 0 ]]; then
     fatal "Cannot ask for ${label}: stdin is not a terminal. Pass --yes or the matching option."
   fi
-  if [[ -n "$default" ]]; then
-    read -rp "${label} [${default}]: " value
-  else
-    read -rp "${label}: " value
-  fi
-  printf -v "$var" '%s' "${value:-$default}"
+  while true; do
+    if [[ -n "$default" ]]; then
+      read -rp "${label} [${default}]: " value
+    else
+      read -rp "${label}: " value
+    fi
+    value="${value:-$default}"
+    if [[ -z "$validator" ]] || "$validator" "$value"; then
+      printf -v "$var" '%s' "$value"
+      return 0
+    fi
+    >&2 echo "❌ $error"
+  done
+}
+
+valid_port() {
+  [[ "$1" =~ ^[0-9]+$ ]] && (( 10#$1 >= 1 && 10#$1 <= 65535 ))
+}
+
+valid_url() {
+  local value="$1"
+  while [[ "$value" == */ ]]; do
+    value="${value%/}"
+  done
+  [[ "$value" =~ ^https?://[^/]+ ]]
+}
+
+valid_keycloak_name() {
+  [[ "$1" =~ ^[a-zA-Z0-9_.-]+$ ]]
+}
+
+valid_infra_dir() {
+  [[ -f "$1/.env" ]]
 }
 
 # detect_host_ip prints the address used for the default route. It is the
@@ -212,9 +249,8 @@ if [[ "$PRINT" != true ]]; then
 fi
 
 # Ask for inputs
-ask HTTP_PORT "🔌 Host port for nginx" "$DEFAULT_HTTP_PORT"
-[[ "$HTTP_PORT" =~ ^[0-9]+$ ]] && (( 10#$HTTP_PORT >= 1 && 10#$HTTP_PORT <= 65535 )) \
-  || fatal "HTTP_PORT must be a number between 1 and 65535"
+ask HTTP_PORT "🔌 Host port for nginx" "$DEFAULT_HTTP_PORT" \
+  valid_port "HTTP_PORT must be a number between 1 and 65535"
 
 default_public="http://localhost:${HTTP_PORT}"
 if [[ "$LOCAL" != true ]]; then
@@ -230,9 +266,11 @@ if [[ "$LOCAL" == true ]] && [[ -z "$PUBLIC_SERVER" ]]; then
   PUBLIC_SERVER="http://localhost:${HTTP_PORT}"
   >&2 echo "🏠 Local mode: using ${PUBLIC_SERVER}"
 fi
-ask PUBLIC_SERVER "🌐 Public URL of the portal" "$default_public"
-PUBLIC_SERVER="${PUBLIC_SERVER%/}"
-[[ -z "$PUBLIC_SERVER" ]] && fatal "PUBLIC_SERVER cannot be empty"
+ask PUBLIC_SERVER "🌐 Public URL of the portal" "$default_public" \
+  valid_url "PUBLIC_SERVER must be a full URL starting with http:// or https://"
+while [[ "$PUBLIC_SERVER" == */ ]]; do
+  PUBLIC_SERVER="${PUBLIC_SERVER%/}"
+done
 if [[ "$LOCAL" != true ]] && { [[ "$PUBLIC_SERVER" == *localhost* ]] || [[ "$PUBLIC_SERVER" == *127.0.0.1* ]]; }; then
   >&2 echo "⚠️  PUBLIC_SERVER points at localhost; use a LAN IP or DNS name if another"
   >&2 echo "   machine or container must reach this portal."
@@ -244,23 +282,20 @@ fi
 if [[ -z "$INFRA_DIR" ]] && [[ -f "${DEFAULT_INFRA_DIR}/.env" ]]; then
   INFRA_DIR="$DEFAULT_INFRA_DIR"
 fi
-ask INFRA_DIR "📁 emobase-infra checkout" "$DEFAULT_INFRA_DIR"
-[[ -f "$INFRA_DIR/.env" ]] || fatal "No .env in ${INFRA_DIR}; run emobase-infra/init.sh first."
+ask INFRA_DIR "📁 emobase-infra checkout" "$DEFAULT_INFRA_DIR" \
+  valid_infra_dir "INFRA_DIR must point at an emobase-infra checkout with a .env file; run emobase-infra/init.sh first."
 
 MYSQL_ROOT_PASSWORD=$(read_env_value "$INFRA_DIR/.env" MYSQL_ROOT_PASSWORD || true)
 [[ -n "$MYSQL_ROOT_PASSWORD" ]] \
   || fatal "${INFRA_DIR}/.env has no MYSQL_ROOT_PASSWORD; re-run emobase-infra/init.sh."
 
-ask KEYCLOAK_REALM "🔐 Portal Keycloak realm" "$DEFAULT_KEYCLOAK_REALM"
-ask KEYCLOAK_CLIENT_ID "🔑 Portal Keycloak client ID" "$DEFAULT_KEYCLOAK_CLIENT_ID"
+ask KEYCLOAK_REALM "🔐 Portal Keycloak realm" "$DEFAULT_KEYCLOAK_REALM" \
+  valid_keycloak_name "KEYCLOAK_REALM contains invalid characters"
+ask KEYCLOAK_CLIENT_ID "🔑 Portal Keycloak client ID" "$DEFAULT_KEYCLOAK_CLIENT_ID" \
+  valid_keycloak_name "KEYCLOAK_CLIENT_ID contains invalid characters"
 ask COCO_USERNAME "👤 Seed user" "coco"
 KEYCLOAK_CLIENT_SECRET="${KEYCLOAK_CLIENT_SECRET:-$(generate_secret_key 32)}"
 COCO_PASSWORD="${COCO_PASSWORD:-$(generate_password)}"
-
-[[ "$KEYCLOAK_REALM" =~ ^[a-zA-Z0-9_.-]+$ ]] \
-  || fatal "KEYCLOAK_REALM contains invalid characters"
-[[ "$KEYCLOAK_CLIENT_ID" =~ ^[a-zA-Z0-9_.-]+$ ]] \
-  || fatal "KEYCLOAK_CLIENT_ID contains invalid characters"
 
 KEYCLOAK_PUBLIC_URL=$(read_env_value "$INFRA_DIR/.env" KEYCLOAK_PUBLIC_URL || true)
 KEYCLOAK_PUBLIC_URL="${KEYCLOAK_PUBLIC_URL:-http://localhost:8181/keycloak}"
