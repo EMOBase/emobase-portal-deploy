@@ -2,7 +2,8 @@
 #
 # Build the web UI and genomics images from source instead of pulling them from
 # GHCR. Point the source directories at your checkouts; the defaults assume the
-# repositories sit next to this checkout:
+# repositories sit next to this checkout. Set them in the environment or in
+# .env:
 #
 #   EMOBASE_PORTAL_WEB_DIR=../emobase-portal-web
 #   EMOBASE_GENOMICS_DIR=../emobase-genomics

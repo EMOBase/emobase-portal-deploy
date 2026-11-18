@@ -371,6 +371,13 @@ BLAST_CONTAINER_NAME=emobase-portal-blast
 EMOBASE_GENOMICS_IMAGE=ghcr.io/emobase/emobase-genomics:dev
 EMOBASE_PORTAL_WEB_IMAGE=ghcr.io/emobase/emobase-portal-web:main
 
+# Local image build instead of pulling from GHCR:
+#   docker compose -f compose.yml -f compose.local.yml up -d --build
+# Point these at the source checkouts; the defaults assume they sit next to
+# this checkout.
+# EMOBASE_PORTAL_WEB_DIR=../emobase-portal-web
+# EMOBASE_GENOMICS_DIR=../emobase-genomics
+
 # ── Keycloak realm ──────────────────────────────────────────────────────────
 # This portal owns its realm and client. Species can join this realm.
 KEYCLOAK_REALM=${KEYCLOAK_REALM}
