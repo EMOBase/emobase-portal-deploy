@@ -149,7 +149,7 @@ To test a locally built image with the normal compose file, give it the same
 name as the published image and set the tag in `.env`:
 
 ```bash
-docker build -t ghcr.io/emobase/emobase-genomics:test ../emobase-genomics
+docker build -t ghcr.io/emobase/emobase-genomics:test path/to/emobase-genomics
 # .env: EMOBASE_GENOMICS_IMAGE=ghcr.io/emobase/emobase-genomics:test
 docker compose up -d
 ```
