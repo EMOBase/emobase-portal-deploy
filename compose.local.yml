@@ -1,7 +1,11 @@
 # Local development only.
 #
-# Build the web UI and genomics images from the sibling source repositories
-# instead of pulling them from GHCR:
+# Build the web UI and genomics images from source instead of pulling them from
+# GHCR. Point the source directories at your checkouts; the defaults assume the
+# repositories sit next to this checkout:
+#
+#   EMOBASE_PORTAL_WEB_DIR=../emobase-portal-web
+#   EMOBASE_GENOMICS_DIR=../emobase-genomics
 #
 #   docker compose -f compose.yml -f compose.local.yml up -d --build
 #
@@ -12,34 +16,34 @@ services:
   fe:
     image: emobase-portal-web:local
     build:
-      context: ../emobase-portal-web
+      context: ${EMOBASE_PORTAL_WEB_DIR:-../emobase-portal-web}
 
   genomicsservice:
     image: emobase-genomics:local
     build:
-      context: ../emobase-genomics
+      context: ${EMOBASE_GENOMICS_DIR:-../emobase-genomics}
 
   genomicsworker-1:
     image: emobase-genomics:local
     build:
-      context: ../emobase-genomics
+      context: ${EMOBASE_GENOMICS_DIR:-../emobase-genomics}
 
   genomicsworker-2:
     image: emobase-genomics:local
     build:
-      context: ../emobase-genomics
+      context: ${EMOBASE_GENOMICS_DIR:-../emobase-genomics}
 
   setup-jbrowse2-web:
     image: emobase-genomics:local
     build:
-      context: ../emobase-genomics
+      context: ${EMOBASE_GENOMICS_DIR:-../emobase-genomics}
 
   migrate-genomics-db:
     image: emobase-genomics:local
     build:
-      context: ../emobase-genomics
+      context: ${EMOBASE_GENOMICS_DIR:-../emobase-genomics}
 
   migrate-genomics-es:
     image: emobase-genomics:local
     build:
-      context: ../emobase-genomics
+      context: ${EMOBASE_GENOMICS_DIR:-../emobase-genomics}

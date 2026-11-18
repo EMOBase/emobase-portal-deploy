@@ -126,9 +126,10 @@ Package settings → Change visibility → Public** once per package.
 
 ## Local development
 
-Start `emobase-infra` first so the external `emobase-infra` Docker network and
-the local MySQL/Keycloak containers exist. Then build from the sibling source
-trees instead of pulling images:
+Start the `infra` checkout first so the external `emobase-infra` Docker network
+and the local MySQL/Keycloak containers exist. Then build the images from local
+source checkouts instead of pulling them (set `EMOBASE_PORTAL_WEB_DIR` and
+`EMOBASE_GENOMICS_DIR` if they are not next to this checkout):
 
 ```bash
 docker compose -f compose.yml -f compose.local.yml up -d --build

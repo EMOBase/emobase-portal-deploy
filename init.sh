@@ -333,7 +333,7 @@ PUBLIC_DATA_DIR=./data/public
 JBROWSE_DOWNLOAD_URL=https://github.com/GMOD/jbrowse-components/releases/download/v4.3.0/jbrowse-web-v4.3.0.zip
 
 # ── Shared infrastructure ───────────────────────────────────────────────────
-# MySQL, Keycloak and Elasticsearch run in the sibling infra stack.
+# MySQL, Keycloak and Elasticsearch run in the shared infra stack.
 # Start it first. This stack joins its Docker network; the service names below
 # resolve there.
 EMOBASE_INFRA_NETWORK=${INFRA_NETWORK}
