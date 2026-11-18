@@ -81,7 +81,7 @@ if [[ "$fail" -ne 0 ]]; then
   echo
   echo "One or more checks failed. Inspect logs with:"
   echo "  docker compose logs --tail=200 fe genomicsservice nginx"
-  echo "  cd ../emobase-infra && docker compose logs --tail=200 mysql keycloak"
+  echo "  cd ../infra && docker compose logs --tail=200 mysql keycloak"
   exit 1
 fi
 

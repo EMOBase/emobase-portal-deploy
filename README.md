@@ -69,8 +69,8 @@ running first.
 ```bash
 ./init.sh
 
-../emobase-infra/scripts/create-database.sh emobase_genomics
-../emobase-infra/scripts/create-realm.sh \
+../infra/scripts/create-database.sh emobase_genomics
+../infra/scripts/create-realm.sh \
   --realm "$(grep '^KEYCLOAK_REALM=' .env | cut -d= -f2-)" \
   --origin "$(grep '^PUBLIC_SERVER=' .env | cut -d= -f2-)" \
   --client-id "$(grep '^KEYCLOAK_CLIENT_ID=' .env | cut -d= -f2-)" \

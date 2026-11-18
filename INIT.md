@@ -51,7 +51,7 @@ COCO_PASSWORD=...
 ```
 
 It also contains the MySQL/Keycloak endpoints, the `genomics` Elasticsearch
-index prefix and `MYSQL_ROOT_PASSWORD` read from `../emobase-infra/.env`.
+index prefix and `MYSQL_ROOT_PASSWORD` read from `../infra/.env`.
 Elasticsearch itself is reached at `elasticsearch:9200` on the shared network.
 
 ## Flags
@@ -99,9 +99,9 @@ Unattended:
 Create the portal database and realm once infra is healthy:
 
 ```bash
-../emobase-infra/scripts/create-database.sh emobase_genomics
+../infra/scripts/create-database.sh emobase_genomics
 
-../emobase-infra/scripts/create-realm.sh \
+../infra/scripts/create-realm.sh \
   --realm "$(grep '^KEYCLOAK_REALM=' .env | cut -d= -f2-)" \
   --origin "$(grep '^PUBLIC_SERVER=' .env | cut -d= -f2-)" \
   --client-id "$(grep '^KEYCLOAK_CLIENT_ID=' .env | cut -d= -f2-)" \
