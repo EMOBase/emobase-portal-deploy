@@ -406,22 +406,26 @@ mkdir -p data/public/emobase-genomics
 >&2 echo "   Portal URL: ${PUBLIC_SERVER}"
 >&2 echo "   nginx port: ${HTTP_PORT}"
 >&2 echo "   Realm:      ${KEYCLOAK_REALM} (${KEYCLOAK_CLIENT_ID})"
->&2 echo
->&2 echo "Next:"
->&2 echo "  1. Make sure emobase-infra is running (docker compose up -d --wait there)."
->&2 echo "  2. Create the portal realm with its origin:"
->&2 echo "       ${INFRA_DIR}/scripts/create-realm.sh \\"
->&2 echo "         --realm ${KEYCLOAK_REALM} --origin ${PUBLIC_SERVER} \\"
->&2 echo "         --client-id ${KEYCLOAK_CLIENT_ID} \\"
->&2 echo "         --client-secret '${KEYCLOAK_CLIENT_SECRET}' \\"
->&2 echo "         --coco-username ${COCO_USERNAME} --coco-password '${COCO_PASSWORD}'"
->&2 echo "     (emobase create portal, up or bootstrap does this automatically.)"
->&2 echo "  3. Review .env (image tags, secrets)."
->&2 echo "  4. docker compose --profile '*' pull"
->&2 echo "  5. docker compose --profile setup run --rm setup-jbrowse2-web"
->&2 echo "  6. docker compose --profile update run --rm migrate-genomics-db"
->&2 echo "  7. docker compose --profile update run --rm migrate-genomics-es"
->&2 echo "  8. docker compose up -d --wait"
->&2 echo "  9. ./scripts/smoke-test.sh"
->&2 echo
->&2 echo "Then deploy the species site with emobase-deploy (see the emobase-docs deployment guide)."
+# When init.sh runs through the CLI, the CLI prints the next step
+# (emobase bootstrap). Keep the manual steps for standalone runs so the two
+# do not both say "Next:".
+if [[ "${EMOBASE_CLI:-}" != "1" ]]; then
+  >&2 echo
+  >&2 echo "Next:"
+  >&2 echo "  1. Make sure emobase-infra is running (docker compose up -d --wait there)."
+  >&2 echo "  2. Create the portal realm with its origin:"
+  >&2 echo "       ${INFRA_DIR}/scripts/create-realm.sh \\"
+  >&2 echo "         --realm ${KEYCLOAK_REALM} --origin ${PUBLIC_SERVER} \\"
+  >&2 echo "         --client-id ${KEYCLOAK_CLIENT_ID} \\"
+  >&2 echo "         --client-secret '${KEYCLOAK_CLIENT_SECRET}' \\"
+  >&2 echo "         --coco-username ${COCO_USERNAME} --coco-password '${COCO_PASSWORD}'"
+  >&2 echo "  3. Review .env (image tags, secrets)."
+  >&2 echo "  4. docker compose --profile '*' pull"
+  >&2 echo "  5. docker compose --profile setup run --rm setup-jbrowse2-web"
+  >&2 echo "  6. docker compose --profile update run --rm migrate-genomics-db"
+  >&2 echo "  7. docker compose --profile update run --rm migrate-genomics-es"
+  >&2 echo "  8. docker compose up -d --wait"
+  >&2 echo "  9. ./scripts/smoke-test.sh"
+  >&2 echo
+  >&2 echo "Then deploy the species site with emobase-deploy (see the emobase-docs deployment guide)."
+fi
