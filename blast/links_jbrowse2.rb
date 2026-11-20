@@ -22,12 +22,33 @@ module SequenceServer
         File.basename(database.name).match?(/(?:\A|-)genome\z/)
     end
 
-    # Track IDs belonging to the assembly in the shared JBrowse2 config, plus
-    # the ad-hoc track for this BLAST hit. The blast service mounts the
-    # jbrowse2-data volume read-only at /jbrowse2 for this lookup.
+    # Tracks selected for the assembly in the config's default session. This
+    # mirrors what JBrowse2 shows at its bare /jbrowse/ URL, so the BLAST link
+    # opens with the same tracks selected instead of every track in the config.
+    def self.default_session_track_ids(config, assembly)
+      Array(config.dig('defaultSession', 'views')).each do |view|
+        # Newer configs nest these under "init"; older ones put them directly
+        # on the view.
+        init = view['init'] || view
+        next unless init['assembly'] == assembly
+
+        ids = Array(init['tracks']).filter_map do |track|
+          track.is_a?(String) ? track : track['trackId']
+        end
+        return ids unless ids.empty?
+      end
+      nil
+    end
+
+    # Track IDs selected for the assembly by the JBrowse2 default session, plus
+    # the ad-hoc track for this BLAST hit. If the config defines no default
+    # session for the assembly, fall back to every track for that assembly.
+    # The blast service mounts the jbrowse2-data volume read-only at /jbrowse2
+    # for this lookup.
     def self.jbrowse_track_ids(assembly, session_track_id)
       config = JSON.parse(File.read(JBROWSE_CONFIG))
-      ids = config.fetch('tracks', []).filter_map do |track|
+      ids = default_session_track_ids(config, assembly)
+      ids ||= config.fetch('tracks', []).filter_map do |track|
         track['trackId'] if Array(track['assemblyNames']).include?(assembly)
       end
       (ids + [session_track_id]).uniq
