@@ -74,7 +74,7 @@ Elasticsearch itself is reached at `elasticsearch:9200` on the shared network.
 
 ## Examples
 
-Local trial:
+Local setup:
 
 ```bash
 ./init.sh --local
