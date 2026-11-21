@@ -50,17 +50,7 @@ The portal serves:
 
 - Docker Engine 24+ with Compose v2
 - Outbound HTTPS access to `ghcr.io`
-- A public URL (or host:port) for the portal
 - A running [`emobase-infra`](https://github.com/EMOBase/emobase-infra) stack with its `.env`
-- The images are public, so no registry login is normally needed. If the
-  packages are private, log in once:
-
-  ```bash
-  echo "$GHCR_TOKEN" | docker login ghcr.io -u <github-user> --password-stdin
-  ```
-
-  The token needs the `read:packages` scope.
-
 ## Quick start (portal)
 
 The local [`emobase-infra`](https://github.com/EMOBase/emobase-infra) must be
@@ -93,12 +83,9 @@ Use `./init.sh --local` for a same-machine trial.
 directly, so it does not depend on the rate-limited GitHub API. Override that
 variable in `.env` to upgrade JBrowse2 or use a mirror.
 
-- [`init.sh` reference](INIT.md)
-- [Local development](DEVELOPMENT.md)
-- [BLAST](BLAST.md)
-- [Deployment guide](https://github.com/EMOBase/emobase-docs/blob/main/DEPLOYMENT.md)
-- [Operations](https://github.com/EMOBase/emobase-docs/blob/main/OPERATIONS.md)
-- [Realm ownership](https://github.com/EMOBase/emobase-docs/blob/main/REALMS.md)
+The prompts and flags are in the [`init.sh` reference](INIT.md); realm
+ownership and sharing are in
+[Realm ownership](https://github.com/EMOBase/emobase-docs/blob/main/REALMS.md).
 
 ## Species sites
 
@@ -117,15 +104,28 @@ The two EMOBase images are published to GitHub Container Registry:
 | `ghcr.io/emobase/emobase-portal-web` | `EMOBase/emobase-portal-web` |
 | `ghcr.io/emobase/emobase-genomics` | `EMOBase/emobase-genomics` |
 
-Both are multi-architecture (`linux/amd64` + `linux/arm64`). Image tags,
-pinning and branch guidance are documented in `.env.example`; pull-request
-builds are `linux/amd64` only and are not pushed.
+Both are multi-architecture (`linux/amd64` + `linux/arm64`). The packages are
+public, so pulling them needs no registry login. Image tags, pinning and branch
+guidance are documented in `.env.example`; pull-request builds are
+`linux/amd64` only and are not pushed.
 
-### One-time package visibility
+## Development
 
-A package created by `GITHUB_TOKEN` is private by default. If anonymous pulls
-should work, open **GitHub → the repository/org → Packages → the package →
-Package settings → Change visibility → Public** once per package.
+See [DEVELOPMENT.md](DEVELOPMENT.md) for local image builds and the Apple
+Silicon/Rosetta requirement.
+
+## BLAST integration
+
+`blast/links_jbrowse2.rb` adds a **Genome Browser** link to hits from a
+`*-genome` nucleotide database. It opens JBrowse2 at the hit coordinates with a
+temporary BLAST-hit track; the assembly comes from the database name
+(`v2a4-genome` → `v2a4`). Protein/RNA hits and mixed searches get no link.
+
+Databases are built from a release by the genomics workers, written to the
+`blast-data` volume, and loaded by restarting the `blast` container. That is why
+the workers mount the Docker socket and `BLAST_CONTAINER_NAME` must match the
+`blast` service. Check `/blast/searchdata.json` to see what SequenceServer has
+loaded; an empty list explains a `502` or empty results.
 
 ## Updating the portal
 
@@ -145,19 +145,14 @@ re-pull a tag that already exists locally. Use `docker compose pull` first, or
 pin an immutable tag and change it explicitly. To roll back, set the previous
 tag in `.env` and run the same commands.
 
-## Notes
+## Reset
 
-- There is no main-species setting: emobase-genomics serves every assembly in a
-  release, and the legacy single-species endpoints default to Tcas internally.
-- `/public/versions` is global: it returns READY versions for every species in
-  this portal, so a single-species client may list versions from other species
-  until species filtering is added to the endpoint.
-- To reset the portal containers and volumes (destroys portal data, but not
-  the shared MySQL/Keycloak/Elasticsearch data):
+This destroys the portal containers and volumes, but not the shared MySQL,
+Keycloak and Elasticsearch data:
 
-  ```bash
-  docker compose --profile '*' down -v
-  ```
+```bash
+docker compose --profile '*' down -v
+```
 
-  The shared databases and `genomics-*` indices are not removed; reset them
-  separately in `emobase-infra`; see its README.
+Reset the shared databases and `genomics-*` indices separately in
+`emobase-infra`; see its README.

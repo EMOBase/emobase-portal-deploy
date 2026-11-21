@@ -48,4 +48,5 @@ docker run --rm --platform linux/amd64 alpine sh -c 'ls -l /proc/1/exe'
 # expect: /proc/1/exe -> /run/rosetta/rosetta
 ```
 
-For BLAST result links and database rebuilds, see [BLAST.md](BLAST.md).
+The BLAST result link and database lifecycle are described in the
+[README](README.md#blast-integration).
