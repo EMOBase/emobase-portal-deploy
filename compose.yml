@@ -7,7 +7,7 @@ name: emobase-portal
 # The same genomics image is used by the API, workers and one-shot jobs.
 # To build the images locally instead of pulling them, see compose.local.yml.
 x-genomics-service: &genomics-service
-  image: ${EMOBASE_GENOMICS_IMAGE:-ghcr.io/emobase/emobase-genomics:main}
+  image: ${EMOBASE_GENOMICS_IMAGE:-ghcr.io/emobase/emobase-genomics:dev}
   restart: unless-stopped
 
 # Configuration shared by the API, workers and one-shot jobs. Genomics reads
