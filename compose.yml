@@ -86,6 +86,10 @@ services:
       # Must match the public path proxied by nginx; tus uses it to build the
       # Location header returned to the browser.
       EMOBASE_GENOMICS_UPLOADS__TUS_BASE_PATH: /api/genomicsservice/v1/uploads
+      # Advertised by /docs/openapi.yaml (Swagger UI "Servers"). Must be the
+      # public portal base, not the internal service URL, so "Try it out"
+      # targets what the browser can reach.
+      EMOBASE_GENOMICS_OPENAPI__SERVER_URL: ${EMOBASE_GENOMICS_OPENAPI__SERVER_URL:-${PUBLIC_SERVER}/api/genomicsservice/v1}
     volumes:
       - ${PUBLIC_DATA_DIR}/emobase-genomics:/app/public/uploads
       - jbrowse2-data:/web/
