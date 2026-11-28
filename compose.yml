@@ -135,6 +135,45 @@ services:
       - default
       - emobase-infra
 
+  # ── Keycloak ─────────────────────────────────────────────────────────────
+  # The portal owns Keycloak. It is only reachable through the nginx above
+  # (/keycloak); the database stays in emobase-infra.
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.3
+    container_name: emobase-portal-keycloak
+    restart: unless-stopped
+    command: ["start", "--health-enabled=true"]
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_HOSTNAME_URL: ${KEYCLOAK_PUBLIC_URL}/
+      KC_HOSTNAME_ADMIN_URL: ${KEYCLOAK_PUBLIC_URL}/
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_STRICT_HTTPS: "false"
+      KC_HTTP_RELATIVE_PATH: /keycloak/
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY_HEADERS: xforwarded
+      KC_DB: mysql
+      KC_DB_URL_HOST: mysql
+      KC_DB_URL_PORT: 3306
+      KC_DB_URL_DATABASE: keycloak
+      KC_DB_USERNAME: root
+      KC_DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      KC_DB_SCHEMA: keycloak
+      JAVA_OPTS: ${KEYCLOAK_JAVA_OPTS:--Xms256m -Xmx768m}
+    healthcheck:
+      test: ["CMD-SHELL", "{ printf 'HEAD /keycloak/health/ready HTTP/1.0\r\n\r\n' >&0; grep -q 'HTTP/1.0 200'; } 0<>/dev/tcp/localhost/8080"]
+      interval: 10s
+      timeout: 10s
+      retries: 18
+    expose:
+      - "8080"
+    networks:
+      default:
+      emobase-infra:
+        aliases:
+          - keycloak
+
   # ── Reverse proxy / public entrypoint ────────────────────────────────────
   nginx:
     image: nginx:1.27-alpine

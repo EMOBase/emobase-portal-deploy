@@ -59,8 +59,11 @@ running first.
 ```bash
 ./init.sh
 
+# The portal owns Keycloak; start it before creating the realm.
+docker compose up -d --wait keycloak
+
 ../infra/scripts/create-database.sh emobase_genomics
-../infra/scripts/create-realm.sh \
+./scripts/create-realm.sh \
   --realm "$(grep '^KEYCLOAK_REALM=' .env | cut -d= -f2-)" \
   --origin "$(grep '^PUBLIC_SERVER=' .env | cut -d= -f2-)" \
   --client-id "$(grep '^KEYCLOAK_CLIENT_ID=' .env | cut -d= -f2-)" \

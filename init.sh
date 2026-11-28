@@ -23,6 +23,10 @@ INFRA_DIR=
 KEYCLOAK_REALM=
 KEYCLOAK_CLIENT_ID=
 KEYCLOAK_CLIENT_SECRET=
+KEYCLOAK_PUBLIC_URL=
+KEYCLOAK_INTERNAL_URL=
+KEYCLOAK_ADMIN=
+KEYCLOAK_ADMIN_PASSWORD=
 COCO_USERNAME=
 COCO_PASSWORD=
 
@@ -31,6 +35,7 @@ DEFAULT_INFRA_DIR="../infra"
 DEFAULT_INFRA_NETWORK="emobase-infra"
 DEFAULT_KEYCLOAK_REALM="emobase-portal"
 DEFAULT_KEYCLOAK_CLIENT_ID="emobase-portal-client"
+DEFAULT_KEYCLOAK_INTERNAL_URL="http://keycloak:8080/keycloak"
 
 fatal() {
   >&2 echo "❌ $1"
@@ -89,6 +94,14 @@ valid_url() {
 
 valid_keycloak_name() {
   [[ "$1" =~ ^[a-zA-Z0-9_.-]+$ ]]
+}
+
+valid_keycloak_url() {
+  local value="$1"
+  while [[ "$value" == */ ]]; do
+    value="${value%/}"
+  done
+  [[ "$value" =~ ^https?://[^/]+ ]] && [[ "$value" == */keycloak ]]
 }
 
 valid_infra_dir() {
@@ -159,12 +172,21 @@ read_env_value() {
 }
 
 usage() {
-  echo "Usage: $0 [-f|--force] [-p|--print] [-y|--yes] [--local] [--public-server URL] [--http-port PORT] [--infra-dir DIR] [--keycloak-realm NAME] [--keycloak-client-id ID] [--keycloak-client-secret SECRET] [--coco-username USER] [--coco-password PASSWORD]"
+  echo "Usage: $0 [-f|--force] [-p|--print] [-y|--yes] [--local] [--public-server URL] [--http-port PORT] [--infra-dir DIR] [--keycloak-public-url URL] [--keycloak-internal-url URL] [--keycloak-admin USER] [--keycloak-admin-password PASSWORD] [--keycloak-realm NAME] [--keycloak-client-id ID] [--keycloak-client-secret SECRET] [--coco-username USER] [--coco-password PASSWORD]"
   echo "Without options, asks each value in order and shows its default."
   echo "  --public-server    Public URL of the portal (default: http://localhost:<http-port>)"
   echo "  --http-port        Host port for nginx (default: ${DEFAULT_HTTP_PORT})"
-  echo "  --infra-dir        infra checkout whose .env holds the shared"
-  echo "                     MySQL/Keycloak URLs (default: ${DEFAULT_INFRA_DIR} when present)"
+  echo "  --infra-dir        infra checkout whose .env holds the shared MySQL"
+  echo "                     password and network (default: ${DEFAULT_INFRA_DIR} when present)"
+  echo "  --keycloak-public-url"
+  echo "                     Browser-facing Keycloak base URL"
+  echo "                     (default: \$PUBLIC_SERVER/keycloak)"
+  echo "  --keycloak-internal-url"
+  echo "                     Container-facing Keycloak base URL"
+  echo "                     (default: ${DEFAULT_KEYCLOAK_INTERNAL_URL})"
+  echo "  --keycloak-admin   Keycloak admin user (default: admin)"
+  echo "  --keycloak-admin-password"
+  echo "                     Keycloak admin password (generated when omitted)"
   echo "  --keycloak-realm   Portal realm (default: ${DEFAULT_KEYCLOAK_REALM})"
   echo "  --keycloak-client-id"
   echo "                     Client in the portal realm (default: ${DEFAULT_KEYCLOAK_CLIENT_ID})"
@@ -192,6 +214,22 @@ while [[ $# -gt 0 ]]; do
       ;;
     --infra-dir)
       INFRA_DIR="$2"
+      shift 2
+      ;;
+    --keycloak-public-url)
+      KEYCLOAK_PUBLIC_URL="$2"
+      shift 2
+      ;;
+    --keycloak-internal-url)
+      KEYCLOAK_INTERNAL_URL="$2"
+      shift 2
+      ;;
+    --keycloak-admin)
+      KEYCLOAK_ADMIN="$2"
+      shift 2
+      ;;
+    --keycloak-admin-password)
+      KEYCLOAK_ADMIN_PASSWORD="$2"
       shift 2
       ;;
     --keycloak-realm)
@@ -276,9 +314,8 @@ if [[ "$LOCAL" != true ]] && { [[ "$PUBLIC_SERVER" == *localhost* ]] || [[ "$PUB
   >&2 echo "   machine or container must reach this portal."
 fi
 
-# Resolve the shared MySQL/Keycloak secrets from emobase-infra. The deploy
-# stacks no longer generate these themselves: one Keycloak client secret and
-# one MySQL root password are shared by every stack.
+# MySQL and the Docker network come from emobase-infra. Keycloak runs in this
+# stack; its database is the shared `keycloak` database in infra MySQL.
 if [[ -z "$INFRA_DIR" ]] && [[ -f "${DEFAULT_INFRA_DIR}/.env" ]]; then
   INFRA_DIR="$DEFAULT_INFRA_DIR"
 fi
@@ -297,23 +334,23 @@ ask COCO_USERNAME "👤 Seed user" "coco"
 KEYCLOAK_CLIENT_SECRET="${KEYCLOAK_CLIENT_SECRET:-$(generate_secret_key 32)}"
 COCO_PASSWORD="${COCO_PASSWORD:-$(generate_password)}"
 
-KEYCLOAK_PUBLIC_URL=$(read_env_value "$INFRA_DIR/.env" KEYCLOAK_PUBLIC_URL || true)
-KEYCLOAK_PUBLIC_URL="${KEYCLOAK_PUBLIC_URL:-http://localhost:8181/keycloak}"
-KEYCLOAK_INTERNAL_URL=$(read_env_value "$INFRA_DIR/.env" KEYCLOAK_INTERNAL_URL || true)
-KEYCLOAK_INTERNAL_URL="${KEYCLOAK_INTERNAL_URL:-http://keycloak:8080/keycloak}"
+ask KEYCLOAK_PUBLIC_URL "🌐 Browser-facing Keycloak URL" "${PUBLIC_SERVER%/}/keycloak" \
+  valid_keycloak_url "KEYCLOAK_PUBLIC_URL must be a full URL ending with /keycloak"
 KEYCLOAK_PUBLIC_URL="${KEYCLOAK_PUBLIC_URL%/}"
+KEYCLOAK_INTERNAL_URL="${KEYCLOAK_INTERNAL_URL:-$DEFAULT_KEYCLOAK_INTERNAL_URL}"
 KEYCLOAK_INTERNAL_URL="${KEYCLOAK_INTERNAL_URL%/}"
+[[ "$KEYCLOAK_INTERNAL_URL" =~ ^https?://[^/]+ ]] \
+  || fatal "KEYCLOAK_INTERNAL_URL must start with http:// or https://"
+[[ "$KEYCLOAK_INTERNAL_URL" == */keycloak ]] \
+  || fatal "KEYCLOAK_INTERNAL_URL must end with /keycloak"
 
-if [[ "$KEYCLOAK_PUBLIC_URL" == *localhost* || "$KEYCLOAK_PUBLIC_URL" == *127.0.0.1* ]] \
-  && [[ "$PUBLIC_SERVER" != *localhost* && "$PUBLIC_SERVER" != *127.0.0.1* ]]; then
-  >&2 echo "⚠️  KEYCLOAK_PUBLIC_URL points at localhost but PUBLIC_SERVER does not."
-  >&2 echo "   Set --keycloak-public-url in the infra checkout's init.sh."
-fi
+KEYCLOAK_ADMIN="${KEYCLOAK_ADMIN:-admin}"
+KEYCLOAK_ADMIN_PASSWORD="${KEYCLOAK_ADMIN_PASSWORD:-$(generate_password)}"
 
 INFRA_NETWORK=$(read_env_value "$INFRA_DIR/.env" EMOBASE_INFRA_NETWORK || true)
 INFRA_NETWORK="${INFRA_NETWORK:-$DEFAULT_INFRA_NETWORK}"
 
->&2 echo "🔗 Using shared MySQL/Keycloak secrets from ${INFRA_DIR}/.env"
+>&2 echo "🔗 Using the shared MySQL password and network from ${INFRA_DIR}/.env"
 
 ENV_CONTENT="# ── Deployment ──────────────────────────────────────────────────────────────
 # Public URL of the portal, including protocol and (if non-standard) port.
@@ -333,18 +370,21 @@ PUBLIC_DATA_DIR=./data/public
 JBROWSE_DOWNLOAD_URL=https://github.com/GMOD/jbrowse-components/releases/download/v4.3.0/jbrowse-web-v4.3.0.zip
 
 # ── Shared infrastructure ───────────────────────────────────────────────────
-# MySQL, Keycloak and Elasticsearch run in the shared infra stack.
-# Start it first. This stack joins its Docker network; the service names below
-# resolve there.
+# MySQL and Elasticsearch run in the shared infra stack. Start it first. This
+# stack joins its Docker network; the service names below resolve there.
 EMOBASE_INFRA_NETWORK=${INFRA_NETWORK}
 EMOBASE_GENOMICS_MYSQL__HOST=mysql
 EMOBASE_GENOMICS_MYSQL__PORT=3306
 EMOBASE_GENOMICS_MYSQL__USER=root
 EMOBASE_GENOMICS_MYSQL__DATABASE=emobase_genomics
 
-# Keycloak endpoints. The portal owns the realm/client below.
+# Keycloak runs in this stack. The database is the shared keycloak
+# database in infra MySQL. Leave KEYCLOAK_INTERNAL_URL empty to use the public
+# URL (for an external Keycloak).
 KEYCLOAK_PUBLIC_URL=${KEYCLOAK_PUBLIC_URL}
 KEYCLOAK_INTERNAL_URL=${KEYCLOAK_INTERNAL_URL}
+KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN}
+KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}
 
 # ── EMOBase Genomics ────────────────────────────────────────────────────────
 # The portal writes only genomics-* indices in the shared Elasticsearch.
@@ -387,7 +427,8 @@ COCO_USERNAME=${COCO_USERNAME}
 COCO_PASSWORD=${COCO_PASSWORD}
 
 # ── Secrets ─────────────────────────────────────────────────────────────────
-# MYSQL_ROOT_PASSWORD is copied from ${INFRA_DIR}/.env.
+# MYSQL_ROOT_PASSWORD is copied from ${INFRA_DIR}/.env. Keycloak uses it for
+# the shared keycloak database.
 MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
 
 # Generated by init.sh. Keep this file private.
@@ -413,8 +454,9 @@ if [[ "${EMOBASE_CLI:-}" != "1" ]]; then
   >&2 echo
   >&2 echo "Next:"
   >&2 echo "  1. Make sure emobase-infra is running (docker compose up -d --wait there)."
-  >&2 echo "  2. Create the portal realm with its origin:"
-  >&2 echo "       ${INFRA_DIR}/scripts/create-realm.sh \\"
+  >&2 echo "  2. Start Keycloak, then create the portal realm with its origin:"
+  >&2 echo "       docker compose up -d --wait keycloak"
+  >&2 echo "       ./scripts/create-realm.sh \\"
   >&2 echo "         --realm ${KEYCLOAK_REALM} --origin ${PUBLIC_SERVER} \\"
   >&2 echo "         --client-id ${KEYCLOAK_CLIENT_ID} \\"
   >&2 echo "         --client-secret '${KEYCLOAK_CLIENT_SECRET}' \\"

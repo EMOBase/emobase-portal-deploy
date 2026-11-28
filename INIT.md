@@ -99,9 +99,12 @@ Unattended:
 Create the portal database and realm once infra is healthy:
 
 ```bash
+# The portal owns Keycloak; start it before creating the realm.
+docker compose up -d --wait keycloak
+
 ../infra/scripts/create-database.sh emobase_genomics
 
-../infra/scripts/create-realm.sh \
+./scripts/create-realm.sh \
   --realm "$(grep '^KEYCLOAK_REALM=' .env | cut -d= -f2-)" \
   --origin "$(grep '^PUBLIC_SERVER=' .env | cut -d= -f2-)" \
   --client-id "$(grep '^KEYCLOAK_CLIENT_ID=' .env | cut -d= -f2-)" \
@@ -112,7 +115,7 @@ Create the portal database and realm once infra is healthy:
 ```
 
 The `emobase` CLI does this automatically during `create portal`, `up` or
-`bootstrap` when infra is running.
+`bootstrap` once the portal Keycloak is running.
 
 Then pull images, run JBrowse2 setup and migrations, start, and smoke test:
 
