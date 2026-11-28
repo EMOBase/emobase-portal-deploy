@@ -20,6 +20,14 @@
   `--keep-secret`) and update both repositories in the same change.
 - Species stacks consume realms; they never create them from a remote server.
 
+## Proxy headers
+
+The portal nginx forwards `X-Forwarded-Host $forwarded_host`, which prefers an
+upstream `X-Forwarded-Host`. That is only safe when the TLS proxy overwrites or
+strips client-supplied values. Do not copy this pattern to the species stack:
+its `fe` trusts the proxy for the origin, so it must forward `$http_host`
+instead.
+
 ## Verification
 
 In a scratch copy of the checkout:
