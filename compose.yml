@@ -50,7 +50,7 @@ services:
       PUBLIC_UI_PAGE_BLAST: /blast/
       PUBLIC_UI_PAGE_API_DOC: /api/genomicsservice/v1/docs
       INTERNAL_API_GENOMICS_SERVICE: ${INTERNAL_API_GENOMICS_SERVICE:-http://genomicsservice:8080}
-      INTERNAL_KEYCLOAK_ISSUER: ${KEYCLOAK_INTERNAL_URL}/realms/${KEYCLOAK_REALM}
+      INTERNAL_KEYCLOAK_ISSUER: ${KEYCLOAK_INTERNAL_URL:-${KEYCLOAK_PUBLIC_URL}}/realms/${KEYCLOAK_REALM}
       AUTH_SECRET: ${AUTH_SECRET}
       # Canonical browser-facing origin for Auth.js redirects. Deriving it from
       # PUBLIC_SERVER avoids reconstructing it from proxy headers.
@@ -79,7 +79,7 @@ services:
     command: ["api", "-c", "/app/config.yaml"]
     environment:
       <<: *genomics-environment
-      EMOBASE_GENOMICS_KEYCLOAK__URL: ${KEYCLOAK_INTERNAL_URL:-http://keycloak:8080/keycloak}
+      EMOBASE_GENOMICS_KEYCLOAK__URL: ${KEYCLOAK_INTERNAL_URL:-${KEYCLOAK_PUBLIC_URL}}
       EMOBASE_GENOMICS_KEYCLOAK__REALM: ${KEYCLOAK_REALM}
       EMOBASE_GENOMICS_KEYCLOAK__ISSUER: ${KEYCLOAK_PUBLIC_URL}/realms/${KEYCLOAK_REALM}
       EMOBASE_GENOMICS_KEYCLOAK__REQUIRED_ROLE: default-roles-${KEYCLOAK_REALM}
