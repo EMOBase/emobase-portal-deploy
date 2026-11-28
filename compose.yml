@@ -228,9 +228,9 @@ services:
       - jbrowse2-data:/jbrowse2:ro
 
   # ── Infrastructure ───────────────────────────────────────────────────────
-  # MySQL, Keycloak and Elasticsearch run in the shared emobase-infra stack.
-  # This stack joins that stack's external Docker network and reaches them as
-  # mysql:3306, keycloak:8080 and elasticsearch:9200.
+  # MySQL and Elasticsearch run in the shared emobase-infra stack. Keycloak
+  # runs above and uses that MySQL. This stack joins the external network and
+  # reaches the services as mysql:3306, keycloak:8080 and elasticsearch:9200.
 
   # ── One-shot setup / migration services ──────────────────────────────────
   setup-jbrowse2-web:

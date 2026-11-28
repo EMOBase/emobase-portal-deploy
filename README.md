@@ -1,10 +1,11 @@
 # EMOBase Portal deployment
 
 Multi-species deployment stack: **emobase-portal-web** (Astro SSR UI) in front
-of **emobase-genomics** (API, workers, JBrowse2, BLAST).
-MySQL, Keycloak and Elasticsearch are **not** part of this stack; they run once
-per server in [`emobase-infra`](https://github.com/EMOBase/emobase-infra) and
-are used by the portal and every species deployment on that server.
+of **emobase-genomics** (API, workers, JBrowse2, BLAST), plus the Keycloak
+server used by the portal and every species deployment. Keycloak stores its
+data in the `keycloak` database in
+[`emobase-infra`](https://github.com/EMOBase/emobase-infra); MySQL and
+Elasticsearch are shared from there.
 
 A deployment server needs **this repository, `emobase-infra`, Docker** and, for
 species sites, `emobase-deploy`.
@@ -150,8 +151,8 @@ tag in `.env` and run the same commands.
 
 ## Reset
 
-This destroys the portal containers and volumes, but not the shared MySQL,
-Keycloak and Elasticsearch data:
+This destroys the portal containers and volumes, but not the shared MySQL and
+Elasticsearch data, including the Keycloak `keycloak` database:
 
 ```bash
 docker compose --profile '*' down -v
