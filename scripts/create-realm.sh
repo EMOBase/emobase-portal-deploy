@@ -147,7 +147,7 @@ kcadm() {
 }
 
 if ! docker compose ps --status running --services 2>/dev/null | grep -qx keycloak; then
-  echo "❌ The shared Keycloak container is not running. Start it with:" >&2
+  echo "❌ The Keycloak container is not running. Start it with:" >&2
   echo "   docker compose up -d --wait" >&2
   exit 1
 fi
