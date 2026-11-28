@@ -334,8 +334,11 @@ ask COCO_USERNAME "👤 Seed user" "coco"
 KEYCLOAK_CLIENT_SECRET="${KEYCLOAK_CLIENT_SECRET:-$(generate_secret_key 32)}"
 COCO_PASSWORD="${COCO_PASSWORD:-$(generate_password)}"
 
-ask KEYCLOAK_PUBLIC_URL "🌐 Browser-facing Keycloak URL" "${PUBLIC_SERVER%/}/keycloak" \
-  valid_keycloak_url "KEYCLOAK_PUBLIC_URL must be a full URL ending with /keycloak"
+# Keycloak is served by the portal nginx at /keycloak, so its public URL is
+# derived. Override it only for the external-Keycloak workaround.
+KEYCLOAK_PUBLIC_URL="${KEYCLOAK_PUBLIC_URL:-${PUBLIC_SERVER%/}/keycloak}"
+valid_keycloak_url "$KEYCLOAK_PUBLIC_URL" \
+  || fatal "KEYCLOAK_PUBLIC_URL must be a full URL ending with /keycloak"
 KEYCLOAK_PUBLIC_URL="${KEYCLOAK_PUBLIC_URL%/}"
 KEYCLOAK_INTERNAL_URL="${KEYCLOAK_INTERNAL_URL:-$DEFAULT_KEYCLOAK_INTERNAL_URL}"
 KEYCLOAK_INTERNAL_URL="${KEYCLOAK_INTERNAL_URL%/}"
