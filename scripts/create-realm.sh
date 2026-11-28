@@ -58,7 +58,7 @@ generate_password() {
 }
 
 usage() {
-  echo "Usage: $0 --realm REALM --origin ORIGIN [--client-id ID] [--client-secret SECRET] [--coco-username USER] [--coco-password PASSWORD] [--keep-password] [--quiet]" >&2
+  echo "Usage: $0 --realm REALM --origin ORIGIN [--client-id ID] [--client-secret SECRET] [--coco-username USER] [--coco-password PASSWORD] [--keep-password] [--keep-secret] [--create-only|--existing-only] [--quiet]" >&2
 }
 
 REALM=
@@ -68,6 +68,9 @@ CLIENT_SECRET=
 COCO_USERNAME=coco
 COCO_PASSWORD=
 KEEP_PASSWORD=false
+KEEP_SECRET=false
+CREATE_ONLY=false
+EXISTING_ONLY=false
 QUIET=false
 
 while [[ $# -gt 0 ]]; do
@@ -98,6 +101,18 @@ while [[ $# -gt 0 ]]; do
       ;;
     --keep-password)
       KEEP_PASSWORD=true
+      shift
+      ;;
+    --keep-secret)
+      KEEP_SECRET=true
+      shift
+      ;;
+    --create-only)
+      CREATE_ONLY=true
+      shift
+      ;;
+    --existing-only)
+      EXISTING_ONLY=true
       shift
       ;;
     --quiet)
@@ -158,7 +173,19 @@ kcadm config credentials \
   --user "$KEYCLOAK_ADMIN" \
   --password "$KEYCLOAK_ADMIN_PASSWORD" >/dev/null
 
+realm_exists=false
 if kcadm get "realms/$REALM" >/dev/null 2>&1; then
+  realm_exists=true
+fi
+if [[ "$CREATE_ONLY" == true && "$realm_exists" == true ]]; then
+  echo "❌ Realm '$REALM' already exists; omit --create-only to update it." >&2
+  exit 1
+fi
+if [[ "$EXISTING_ONLY" == true && "$realm_exists" != true ]]; then
+  echo "❌ Realm '$REALM' does not exist; create it first." >&2
+  exit 1
+fi
+if [[ "$realm_exists" == true ]]; then
   echo "ℹ️  Realm '$REALM' already exists; updating its client and seed user."
 else
   kcadm create realms -s realm="$REALM" -s enabled=true >/dev/null
@@ -167,6 +194,11 @@ fi
 
 client_uuid=$(kcadm get clients -r "$REALM" -q clientId="$CLIENT_ID" \
   --fields id --format csv --noquotes | tail -n1 | tr -d '\r')
+
+if [[ "$EXISTING_ONLY" == true && -z "$client_uuid" ]]; then
+  echo "❌ Client '$CLIENT_ID' does not exist in realm '$REALM'." >&2
+  exit 1
+fi
 
 if [[ -z "$client_uuid" ]]; then
   kcadm create clients -r "$REALM" \
@@ -201,10 +233,11 @@ print(json.dumps(redirects))
 print(json.dumps(origins))
 ' "$ORIGIN")
 
-  kcadm update "clients/$client_uuid" -r "$REALM" \
-    -s "secret=$CLIENT_SECRET" \
-    -s "redirectUris=$redirects" \
-    -s "webOrigins=$origins" >/dev/null
+  update_args=(-s "redirectUris=$redirects" -s "webOrigins=$origins")
+  if [[ "$KEEP_SECRET" != true ]]; then
+    update_args+=(-s "secret=$CLIENT_SECRET")
+  fi
+  kcadm update "clients/$client_uuid" -r "$REALM" "${update_args[@]}" >/dev/null
   echo "✅ Updated client '$CLIENT_ID'."
 fi
 
