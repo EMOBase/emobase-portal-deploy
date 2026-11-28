@@ -43,6 +43,10 @@ The portal `.env` contains:
 ```dotenv
 PUBLIC_SERVER=...
 HTTP_PORT=...
+KEYCLOAK_PUBLIC_URL=https://<portal>/keycloak
+KEYCLOAK_INTERNAL_URL=http://keycloak:8080/keycloak
+KEYCLOAK_ADMIN=admin
+KEYCLOAK_ADMIN_PASSWORD=...
 KEYCLOAK_REALM=emobase-portal
 KEYCLOAK_CLIENT_ID=emobase-portal-client
 KEYCLOAK_CLIENT_SECRET=...
@@ -50,18 +54,23 @@ COCO_USERNAME=coco
 COCO_PASSWORD=...
 ```
 
-It also contains the MySQL/Keycloak endpoints, the `genomics` Elasticsearch
-index prefix and `MYSQL_ROOT_PASSWORD` read from `../infra/.env`.
+Keycloak runs in this stack and uses the `keycloak` database in infra MySQL.
+The `.env` also contains the `genomics` Elasticsearch index prefix and
+`MYSQL_ROOT_PASSWORD` read from `../infra/.env`.
 Elasticsearch itself is reached at `elasticsearch:9200` on the shared network.
 
 ## Flags
 
 | Flag | Meaning |
 | --- | --- |
-| `--local` | Use localhost for the portal URL |
+| `--local` | Use localhost for the portal and Keycloak URLs |
 | `--public-server URL` | Public portal URL |
 | `--http-port PORT` | Host port for nginx |
 | `--infra-dir DIR` | Path to the `emobase-infra` checkout |
+| `--keycloak-public-url URL` | Browser-facing Keycloak base URL (default: `<PUBLIC_SERVER>/keycloak`) |
+| `--keycloak-internal-url URL` | Container-facing Keycloak base URL |
+| `--keycloak-admin USER` | Keycloak admin user |
+| `--keycloak-admin-password PASSWORD` | Keycloak admin password (generated when omitted) |
 | `--keycloak-realm NAME` | Portal realm name |
 | `--keycloak-client-id ID` | Portal client ID |
 | `--keycloak-client-secret SECRET` | Client secret (generated when omitted) |
